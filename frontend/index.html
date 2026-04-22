@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>DAO Frontend (Minimal)</title>
+  </head>
+  <body>
+    <h2>DAO Frontend (Minimal)</h2>
+    <button id="connect">Connect MetaMask</button>
+    <div id="addr"></div>
+    <div>
+      <label>Token Balance: <span id="balance">-</span></label>
+    </div>
+    <script>
+      const connectBtn = document.getElementById('connect');
+      const addr = document.getElementById('addr');
+      const balance = document.getElementById('balance');
+
+      connectBtn.onclick = async () => {
+        if (!window.ethereum) return alert('Install MetaMask');
+        const [account] = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        addr.innerText = account;
+        // User should update token/dao addresses below
+        const tokenAddress = 'PUT_TOKEN_ADDRESS_HERE';
+        const tokenAbi = ["function balanceOf(address) view returns (uint256)"];
+        if (tokenAddress && tokenAddress !== 'PUT_TOKEN_ADDRESS_HERE') {
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const token = new ethers.Contract(tokenAddress, tokenAbi, provider);
+          const bal = await token.balanceOf(account);
+          balance.innerText = bal.toString();
+        }
+      }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
+  </body>
+</html>
