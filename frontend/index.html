@@ -2,35 +2,433 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>DAO Frontend (Minimal)</title>
+    <title>DAO Governance Frontend</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      }
+      h1, h2 {
+        color: #333;
+      }
+      .status-box {
+        background: #f0f0f0;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 4px;
+        border-left: 4px solid #2196F3;
+      }
+      .button-group {
+        margin: 15px 0;
+      }
+      button {
+        background: #2196F3;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        margin-right: 10px;
+        margin-bottom: 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button:hover {
+        background: #1976D2;
+      }
+      button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+      input, textarea {
+        width: 100%;
+        padding: 8px;
+        margin: 5px 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 12px;
+      }
+      input[type="number"] {
+        width: auto;
+      }
+      .form-group {
+        margin: 15px 0;
+      }
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #333;
+      }
+      .proposal-item {
+        background: #f9f9f9;
+        padding: 12px;
+        margin: 10px 0;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+      }
+      .success {
+        color: green;
+        font-weight: bold;
+      }
+      .error {
+        color: red;
+        font-weight: bold;
+      }
+      .warning {
+        color: orange;
+        font-weight: bold;
+      }
+      #loadingSpinner {
+        display: none;
+        color: #2196F3;
+      }
+      .config-section {
+        background: #fff3cd;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+      }
+    </style>
   </head>
   <body>
-    <h2>DAO Frontend (Minimal)</h2>
-    <button id="connect">Connect MetaMask</button>
-    <div id="addr"></div>
-    <div>
-      <label>Token Balance: <span id="balance">-</span></label>
-    </div>
-    <script>
-      const connectBtn = document.getElementById('connect');
-      const addr = document.getElementById('addr');
-      const balance = document.getElementById('balance');
+    <div class="container">
+      <h1>DAO Governance Frontend</h1>
+      
+      <div class="config-section">
+        <h3>⚙️ Configuration</h3>
+        <p style="color: #856404;">Update these contract addresses for your deployment:</p>
+        <div class="form-group">
+          <label>Token Contract Address:</label>
+          <input type="text" id="tokenAddr" placeholder="0x..." value="0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9" />
+        </div>
 
-      connectBtn.onclick = async () => {
-        if (!window.ethereum) return alert('Install MetaMask');
-        const [account] = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        addr.innerText = account;
-        // User should update token/dao addresses below
-        const tokenAddress = 'PUT_TOKEN_ADDRESS_HERE';
-        const tokenAbi = ["function balanceOf(address) view returns (uint256)"];
-        if (tokenAddress && tokenAddress !== 'PUT_TOKEN_ADDRESS_HERE') {
-          const provider = new ethers.providers.Web3Provider(window.ethereum);
-          const token = new ethers.Contract(tokenAddress, tokenAbi, provider);
-          const bal = await token.balanceOf(account);
-          balance.innerText = bal.toString();
+        <div class="form-group">
+          <label>DAO Contract Address:</label>
+          <input type="text" id="daoAddr" placeholder="0x..." value="0x5FC8d32690cc91D4c39d9d3abcBD16989F875707" />
+        </div>
+
+        <div class="form-group">
+          <label>Target Contract Address (for proposals):</label>
+          <input type="text" id="targetAddr" placeholder="0x..." value="0xa513E6E4b8f2a923D98304ec87F64353C4D5C853" />
+        </div>
+        <button onclick="updateAddresses()">Save Addresses</button>
+      </div>
+
+      <div class="button-group">
+        <button onclick="connectWallet()">🔗 Connect MetaMask</button>
+        <button onclick="refreshData()">🔄 Refresh Data</button>
+      </div>
+
+      <div class="status-box">
+        <strong>Account:</strong> <span id="account">Not connected</span><br>
+        <strong>Token Balance:</strong> <span id="balance">-</span><br>
+        <strong>Chain:</strong> <span id="chainId">-</span><br>
+        <span id="loadingSpinner">⏳ Loading...</span>
+      </div>
+
+      <h2>📝 Create Proposal</h2>
+      <div class="form-group">
+        <label>Target Function:</label>
+        <select id="functionSelect" style="width: 100%; padding: 8px; border: 1px solid #ddd;">
+          <option value="setValue">MockTarget: setValue(uint256 value)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Function Parameter (value):</label>
+        <input type="number" id="paramValue" placeholder="e.g., 42" />
+      </div>
+      <div class="form-group">
+        <label>Voting Duration (seconds):</label>
+        <input type="number" id="votingDuration" placeholder="e.g., 300" value="300" />
+      </div>
+      <button onclick="createProposal()">Create Proposal</button>
+      <div id="proposalStatus" class="status-box" style="margin-top: 10px; display: none;"></div>
+
+      <h2>🗳️ Proposals & Voting</h2>
+      <button onclick="loadProposals()">Load Proposals</button>
+      <div id="proposalsList" style="margin-top: 15px;"></div>
+
+      <h2>📊 Contract Info</h2>
+      <div class="status-box">
+        <strong>Quorum:</strong> <span id="quorum">-</span>%<br>
+        <strong>Current Block:</strong> <span id="blockNum">-</span><br>
+        <strong>Total Proposals:</strong> <span id="totalProposals">-</span>
+      </div>
+    </div>
+
+    <!-- <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.min.js"></script> -->
+    <script>
+      let provider, signer, account;
+      let tokenAddress, daoAddress, targetAddress;
+      
+      const TOKEN_ABI = [
+        "function balanceOf(address) view returns (uint256)",
+        "function transfer(address, uint256) external returns (bool)",
+        "event Transfer(address indexed from, address indexed to, uint256 value)"
+      ];
+
+      const DAO_ABI = [
+        "function createProposal(address target, bytes calldata data, uint256 deadline) external returns (uint256)",
+        "function vote(uint256 proposalId, bool support) external",
+        "function executeProposal(uint256 proposalId) external",
+        "function proposals(uint256) view returns (address target, bytes data, uint256 snapshotId, uint256 deadline, uint256 forVotes, uint256 againstVotes, bool executed, address creator)",
+        "function hasVoted(uint256 proposalId, address voter) view returns (bool)",
+        "function quorumPercent() view returns (uint256)",
+        "event ProposalCreated(uint256 indexed id, address indexed creator, address target, uint256 snapshotId, uint256 deadline)",
+        "event VoteCast(uint256 indexed id, address indexed voter, bool support, uint256 weight)",
+        "event ProposalExecuted(uint256 indexed id)"
+      ];
+
+      const TARGET_ABI = [
+        "function setValue(uint256 v) external",
+        "function value() view returns (uint256)"
+      ];
+
+      function updateAddresses() {
+        tokenAddress = document.getElementById('tokenAddr').value;
+        daoAddress = document.getElementById('daoAddr').value;
+        targetAddress = document.getElementById('targetAddr').value;
+        alert('Addresses updated. Please reconnect wallet.');
+      }
+
+      async function connectWallet() {
+        try {
+          if (!window.ethereum) {
+            alert('Please install MetaMask');
+            return;
+          }
+
+          provider = new ethers.BrowserProvider(window.ethereum);
+          const accounts = await provider.send('eth_requestAccounts', []);
+          account = accounts[0];
+          signer = await provider.getSigner();
+          
+          // Load addresses from inputs or use defaults
+          tokenAddress = document.getElementById('tokenAddr').value;
+          daoAddress = document.getElementById('daoAddr').value;
+          targetAddress = document.getElementById('targetAddr').value;
+
+          document.getElementById('account').textContent = account;
+          
+          // Get chain ID
+          const network = await provider.getNetwork();
+          document.getElementById('chainId').textContent = `${network.name} (${network.chainId})`;
+
+          await refreshData();
+        } catch (err) {
+          alert('Error connecting: ' + err.message);
         }
       }
+
+      async function refreshData() {
+        if (!account) {
+          alert('Please connect wallet first');
+          return;
+        }
+
+        try {
+          showLoading(true);
+          const token = new ethers.Contract(tokenAddress, TOKEN_ABI, provider);
+          const dao = new ethers.Contract(daoAddress, DAO_ABI, provider);
+
+          // Get balance
+          const bal = await token.balanceOf(account);
+          document.getElementById('balance').textContent = ethers.formatEther(bal) + ' GOV';
+
+          // Get block
+          const block = await provider.getBlockNumber();
+          document.getElementById('blockNum').textContent = block;
+
+          // Get quorum
+          const quorum = await dao.quorumPercent();
+          document.getElementById('quorum').textContent = quorum.toString();
+
+          // Try to get proposal count (may not be exposed, so wrapped in try-catch)
+          try {
+            // Query event logs to count proposals instead
+            const events = await dao.queryFilter("ProposalCreated", 0, "latest");
+            document.getElementById('totalProposals').textContent = events.length.toString();
+          } catch (e) {
+            document.getElementById('totalProposals').textContent = "?";
+          }
+
+          showLoading(false);
+        } catch (err) {
+          alert('Error refreshing data: ' + err.message);
+          showLoading(false);
+        }
+      }
+
+      async function createProposal() {
+        if (!account) {
+          alert('Please connect wallet first');
+          return;
+        }
+
+        try {
+          const value = document.getElementById('paramValue').value;
+          const duration = parseInt(document.getElementById('votingDuration').value);
+
+          if (!value || !duration) {
+            alert('Please fill all fields');
+            return;
+          }
+
+          const target = new ethers.Contract(targetAddress, TARGET_ABI, provider);
+          const calldata = target.interface.encodeFunctionData('setValue', [value]);
+
+          const dao = new ethers.Contract(daoAddress, DAO_ABI, signer);
+          
+          // --- 🚨 THE FIX IS HERE 🚨 ---
+          // Use real-world time instead of the sleeping Hardhat block time
+          const currentTimestamp = Math.floor(Date.now() / 1000);
+          const deadline = currentTimestamp + duration;
+          // -----------------------------
+
+          showLoading(true);
+          const tx = await dao.createProposal(targetAddress, calldata, deadline);
+          const receipt = await tx.wait();
+
+          showProposalStatus(`✅ Proposal created! TX: ${tx.hash}`, 'success');
+          showLoading(false);
+          setTimeout(() => loadProposals(), 1000);
+        } catch (err) {
+          showProposalStatus(`❌ Error: ${err.message}`, 'error');
+          showLoading(false);
+        }
+      }
+
+      async function loadProposals() {
+        if (!account) {
+          alert('Please connect wallet first');
+          return;
+        }
+
+        try {
+          showLoading(true);
+          const dao = new ethers.Contract(daoAddress, DAO_ABI, provider);
+          
+          // Get events instead of direct array access
+          const events = await dao.queryFilter("ProposalCreated", 0, "latest");
+          let html = '';
+
+          if (events.length === 0) {
+            html = '<p>No proposals yet</p>';
+          } else {
+            for (let i = 0; i < events.length; i++) {
+              const id = events[i].args.id;
+              const proposal = await dao.proposals(id);
+              
+              const now = Math.floor(Date.now() / 1000);
+              const deadlineNum = Number(proposal.deadline); // Explicitly convert BigInt to Number
+              const timeLeft = deadlineNum - now;
+              const isActive = timeLeft > 0 && !proposal.executed;
+              const hasVoted = await dao.hasVoted(id, account);
+              html += `
+                <div class="proposal-item">
+                  <strong>Proposal #${id}</strong><br>
+                  Status: ${proposal.executed ? '<span class="success">✅ Executed</span>' : (isActive ? '<span class="warning">🔄 Voting</span>' : '<span>⏱️ Closed</span>')}<br>
+                  For: ${ethers.formatEther(proposal.forVotes)} GOV | Against: ${ethers.formatEther(proposal.againstVotes)} GOV<br>
+                  Time left: ${isActive ? (timeLeft + ' seconds') : 'Ended'}<br>
+              `;
+
+              if (isActive && !hasVoted) {
+                html += `
+                  <button onclick="vote(${id}, true)">👍 Vote For</button>
+                  <button onclick="vote(${id}, false)">👎 Vote Against</button>
+                `;
+              } else if (hasVoted) {
+                html += '<span class="success">✓ You voted</span><br>';
+              }
+
+              if (!isActive && !proposal.executed) {
+                html += `<button onclick="executeProposal(${id})">Execute Proposal</button>`;
+              }
+
+              html += '</div>';
+            }
+          }
+
+          document.getElementById('proposalsList').innerHTML = html;
+          showLoading(false);
+        } catch (err) {
+          alert('Error loading proposals: ' + err.message);
+          showLoading(false);
+        }
+      }
+
+      async function vote(proposalId, support) {
+        if (!account) {
+          alert('Please connect wallet first');
+          return;
+        }
+
+        try {
+          showLoading(true);
+          const dao = new ethers.Contract(daoAddress, DAO_ABI, signer);
+          const tx = await dao.vote(proposalId, support);
+          await tx.wait();
+
+          alert(`✅ Vote cast! TX: ${tx.hash}`);
+          showLoading(false);
+          loadProposals();
+        } catch (err) {
+          alert('Error voting: ' + err.message);
+          showLoading(false);
+        }
+      }
+
+      async function executeProposal(proposalId) {
+        if (!account) {
+          alert('Please connect wallet first');
+          return;
+        }
+
+        try {
+          showLoading(true);
+          const dao = new ethers.Contract(daoAddress, DAO_ABI, signer);
+          const tx = await dao.executeProposal(proposalId);
+          await tx.wait();
+
+          alert(`✅ Proposal executed! TX: ${tx.hash}`);
+          showLoading(false);
+          loadProposals();
+        } catch (err) {
+          alert('Error executing: ' + err.message);
+          showLoading(false);
+        }
+      }
+
+      function showProposalStatus(msg, type) {
+        const el = document.getElementById('proposalStatus');
+        el.textContent = msg;
+        el.className = 'status-box ' + type;
+        el.style.display = 'block';
+        setTimeout(() => el.style.display = 'none', 5000);
+      }
+
+      function showLoading(show) {
+        document.getElementById('loadingSpinner').style.display = show ? 'inline' : 'none';
+      }
+
+      // Auto-load on page load
+      window.addEventListener('load', () => {
+        if (window.ethereum) {
+          window.ethereum.on('accountsChanged', () => location.reload());
+          window.ethereum.on('chainChanged', () => location.reload());
+        }
+      });
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
   </body>
 </html>
