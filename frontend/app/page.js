@@ -48,9 +48,9 @@ export default function Home() {
     setToast({ message, type });
   }, []);
 
-  const fetchProposals = useCallback(async () => {
+  const fetchProposals = useCallback(async (isBackground = false) => {
     if (!daoContract) return;
-    setLoadingProposals(true);
+    if (!isBackground) setLoadingProposals(true);
     try {
       const allProposals = [];
       let i = 0;
@@ -77,7 +77,7 @@ export default function Home() {
     } catch (err) {
       console.error("Error fetching proposals:", err);
     } finally {
-      setLoadingProposals(false);
+      if (!isBackground) setLoadingProposals(false);
     }
   }, [daoContract]);
 
@@ -108,7 +108,7 @@ export default function Home() {
   useEffect(() => {
     if (!daoContract) return;
     const interval = setInterval(() => {
-      fetchProposals();
+      fetchProposals(true);
       fetchStats();
     }, 10000);
     return () => clearInterval(interval);

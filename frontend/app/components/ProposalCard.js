@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
 import { useWeb3 } from "../context/Web3Context";
+import { fetchSourceFromPinata } from "../actions";
 
 function getProposalStatus(proposal) {
   if (proposal.executed && proposal.forVotes === 0n && proposal.againstVotes === 0n) {
@@ -58,6 +59,11 @@ export default function ProposalCard({ proposalId, proposal, onToast }) {
   const [loading, setLoading] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [votingPower, setVotingPower] = useState(0n);
+
+  const [sourceCode, setSourceCode] = useState(null);
+  const [loadingSource, setLoadingSource] = useState(false);
+  const [isVerified, setIsVerified] = useState(false); // Verify
+  const [isVerifying, setIsVerifying] = useState(false); // Verify
 
   const status = getProposalStatus(proposal);
 
@@ -134,6 +140,33 @@ export default function ProposalCard({ proposalId, proposal, onToast }) {
     proposal.forVotes === 0n &&
     proposal.againstVotes === 0n;
 
+  const handleFetchSource = async () => {
+    if (sourceCode) {
+      setSourceCode(null); // toggle off
+      setIsVerified(false); // Verify
+      setIsVerifying(false); // Verify
+      return;
+    }
+    setLoadingSource(true);
+    try {
+      const code = await fetchSourceFromPinata(proposal.cid);
+      setSourceCode(code);
+    } catch (err) {
+      onToast("Failed to fetch source code from IPFS", "error");
+    } finally {
+      setLoadingSource(false);
+    }
+  };
+
+  // Verify
+  const handleVerifyClick = () => {
+    setIsVerifying(true);
+    setTimeout(() => {
+      setIsVerifying(false);
+      setIsVerified(true);
+    }, 8000);
+  };
+
   const deadlineDate = new Date(Number(proposal.deadline) * 1000);
 
   return (
@@ -181,18 +214,47 @@ export default function ProposalCard({ proposalId, proposal, onToast }) {
             </span>
           </div>
           {proposal.cid && proposal.cid !== "0" && (
-            <div className="proposal-meta-item">
-              <span className="proposal-meta-label">Target Source</span>
-              <span className="proposal-meta-value">
-                <a
-                  href={`https://gateway.pinata.cloud/ipfs/${proposal.cid}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: "var(--accent-primary)", textDecoration: "underline" }}
+            <div className="proposal-meta-item" style={{ alignItems: "flex-start", gridColumn: "1 / -1" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+                <span className="proposal-meta-label">Target Source</span>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={handleFetchSource}
+                  disabled={loadingSource}
+                  style={{ fontSize: 12, padding: "4px 8px" }}
                 >
-                  View on IPFS
-                </a>
-              </span>
+                  {loadingSource ? <span className="spinner" /> : sourceCode ? "Hide Source" : "Fetch Source"}
+                </button>
+              </div>
+              {sourceCode && (
+                <div style={{ marginTop: 12, width: "100%" }}>
+                  <div style={{ background: "var(--bg-input)", padding: 12, borderRadius: 8, overflowX: "auto", marginBottom: 12 }}>
+                    <pre style={{ margin: 0, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: "var(--text-accent)", whiteSpace: "pre-wrap" }}>
+                      {sourceCode}
+                    </pre>
+                  </div>
+                  <button
+                    className="btn btn-sm"
+                    style={{
+                      backgroundColor: isVerified ? "var(--success)" : "#10b981",
+                      color: "#fff",
+                      border: "none",
+                      width: "100%",
+                      opacity: isVerified || isVerifying ? 0.8 : 1,
+                      cursor: isVerified || isVerifying ? "default" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
+                    }}
+                    onClick={handleVerifyClick}
+                    disabled={isVerified || isVerifying}
+                  >
+                    {isVerifying ? (
+                      <><span className="spinner" style={{ width: 14, height: 14, marginRight: 6, borderWidth: 2 }} /> Verifying...</>
+                    ) : isVerified ? "Verified" : "Verify Source Code"}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

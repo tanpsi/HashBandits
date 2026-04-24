@@ -24,3 +24,25 @@ export async function uploadSourceToPinata(sourceCode) {
     throw new Error("Failed to upload source code to Pinata: " + error.message);
   }
 }
+
+// Fetch source code from IPFS using Pinata
+export async function fetchSourceFromPinata(cid) {
+  if (!cid || cid === "0") return null;
+
+  if (!process.env.PINATA_JWT || !process.env.PINATA_GATEWAY) {
+    throw new Error("Pinata credentials not found in environment variables.");
+  }
+
+  const pinata = new PinataSDK({
+    pinataJwt: process.env.PINATA_JWT,
+    pinataGateway: process.env.PINATA_GATEWAY,
+  });
+
+  try {
+    const result = await pinata.gateways.public.get(cid);
+    return result.data || null;
+  } catch (error) {
+    console.error("Pinata fetch error:", error);
+    throw new Error("Failed to fetch source code from Pinata: " + error.message);
+  }
+}
