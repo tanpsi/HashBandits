@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("DAO governance flow", function () {
   let Token, DAO, MockTarget;
@@ -56,7 +57,7 @@ describe("DAO governance flow", function () {
     const now = (await ethers.provider.getBlock()).timestamp;
     const deadline = now + 105; // 45 seconds min + 60 seconds buffer
 
-    const tx = await dao.createProposal(mockAddr, data, deadline);
+    const tx = await dao.createProposal(mockAddr, data, deadline, "");
     const rc = await tx.wait();
     const id = findEventId(rc, dao.interface, "ProposalCreated");
 
@@ -65,6 +66,7 @@ describe("DAO governance flow", function () {
 
     await ethers.provider.send("evm_increaseTime", [150]);
     await ethers.provider.send("evm_mine");
+    await time.increase(30);
 
     await dao.connect(carol).executeProposal(id);
     expect(await mock.value()).to.equal(42);
@@ -75,7 +77,7 @@ describe("DAO governance flow", function () {
     const data = mock.interface.encodeFunctionData("setValue", [7]);
     const now = (await ethers.provider.getBlock()).timestamp;
     const deadline = now + 105;
-    const tx = await dao.createProposal(mockAddr, data, deadline);
+    const tx = await dao.createProposal(mockAddr, data, deadline, "");
     const rc = await tx.wait();
     const id = findEventId(rc, dao.interface, "ProposalCreated");
 
@@ -95,7 +97,7 @@ describe("DAO governance flow", function () {
     const data = mock.interface.encodeFunctionData("setValue", [9]);
     const now = (await ethers.provider.getBlock()).timestamp;
     const deadline = now + 105;
-    const tx = await dao.createProposal(mockAddr, data, deadline);
+    const tx = await dao.createProposal(mockAddr, data, deadline, "");
     const rc = await tx.wait();
     const id = findEventId(rc, dao.interface, "ProposalCreated");
 
@@ -111,7 +113,7 @@ describe("DAO governance flow", function () {
     const now = (await ethers.provider.getBlock()).timestamp;
     const deadline = now + 105;
     
-    const tx = await dao.createProposal(mockAddr, data, deadline);
+    const tx = await dao.createProposal(mockAddr, data, deadline, "");
     const rc = await tx.wait();
     const id = findEventId(rc, dao.interface, "ProposalCreated");
 
@@ -119,6 +121,7 @@ describe("DAO governance flow", function () {
 
     await ethers.provider.send("evm_increaseTime", [150]);
     await ethers.provider.send("evm_mine");
+    await time.increase(30);
 
     await expect(dao.executeProposal(id)).to.be.revertedWith("Quorum not reached");
   });
@@ -129,14 +132,14 @@ describe("DAO governance flow", function () {
     const now = (await ethers.provider.getBlock()).timestamp;
     const deadline = now + 105 + 100;
     
-    const tx = await dao.createProposal(mockAddr, data, deadline);
+    const tx = await dao.createProposal(mockAddr, data, deadline, "");
     const rc = await tx.wait();
     const id = findEventId(rc, dao.interface, "ProposalCreated");
 
     await dao.connect(alice).vote(id, true);
     await dao.connect(bob).vote(id, true);
 
-    await expect(dao.executeProposal(id)).to.be.revertedWith("Voting not ended");
+    await expect(dao.executeProposal(id)).to.be.revertedWith("Execution delay not passed");
 
     await ethers.provider.send("evm_increaseTime", [240]);
     await ethers.provider.send("evm_mine");
@@ -152,7 +155,7 @@ describe("DAO governance flow", function () {
     const now = (await ethers.provider.getBlock()).timestamp;
     const deadline = now + 105 + 60;
     
-    const tx = await dao.createProposal(mockAddr, data, deadline);
+    const tx = await dao.createProposal(mockAddr, data, deadline, "");
     const rc = await tx.wait();
     const id = findEventId(rc, dao.interface, "ProposalCreated");
 
@@ -162,6 +165,7 @@ describe("DAO governance flow", function () {
 
     await ethers.provider.send("evm_increaseTime", [170]);
     await ethers.provider.send("evm_mine");
+    await time.increase(30);
 
     await dao.executeProposal(id);
     expect(await mock.value()).to.equal(77);
@@ -192,7 +196,7 @@ describe("DAO governance flow", function () {
     const now = (await ethers.provider.getBlock()).timestamp;
     const deadline = now + 105 + 60;
     
-    const tx = await tempDAO.createProposal(await mock2.getAddress(), data, deadline);
+    const tx = await tempDAO.createProposal(await mock2.getAddress(), data, deadline, "");
     const rc = await tx.wait();
     const id = findEventId(rc, tempDAO.interface, "ProposalCreated");
     
@@ -201,6 +205,7 @@ describe("DAO governance flow", function () {
     
     await ethers.provider.send("evm_increaseTime", [170]);
     await ethers.provider.send("evm_mine");
+    await time.increase(30);
     
     await expect(tempDAO.executeProposal(id)).to.be.revertedWith("Quorum not reached");
   });
@@ -214,7 +219,7 @@ describe("DAO governance flow", function () {
     const now = (await ethers.provider.getBlock()).timestamp;
     const deadline = now + 105 + 60;
     
-    const tx = await dao.createProposal(mockAddr, calldata, deadline);
+    const tx = await dao.createProposal(mockAddr, calldata, deadline, "");
     const rc = await tx.wait();
     const proposalId = findEventId(rc, dao.interface, "ProposalCreated");
 
@@ -223,6 +228,7 @@ describe("DAO governance flow", function () {
 
     await ethers.provider.send("evm_increaseTime", [170]);
     await ethers.provider.send("evm_mine");
+    await time.increase(30);
 
     const executeEvent = await dao.executeProposal(proposalId);
     
@@ -238,12 +244,13 @@ describe("DAO governance flow", function () {
     const now = (await ethers.provider.getBlock()).timestamp;
     const deadline = now + 105 + 10;
     
-    const tx = await dao.createProposal(mockAddr, data, deadline);
+    const tx = await dao.createProposal(mockAddr, data, deadline, "");
     const rc = await tx.wait();
     const id = findEventId(rc, dao.interface, "ProposalCreated");
 
     await ethers.provider.send("evm_increaseTime", [120]);
     await ethers.provider.send("evm_mine");
+    await time.increase(30);
 
     await expect(dao.connect(alice).vote(id, true)).to.be.revertedWith("Voting closed");
   });
@@ -254,7 +261,7 @@ describe("DAO governance flow", function () {
     const now = (await ethers.provider.getBlock()).timestamp;
     const deadline = now + 105 + 60;
 
-    const tx = await dao.createProposal(mockAddr, data, deadline);
+    const tx = await dao.createProposal(mockAddr, data, deadline, "");
     const rc = await tx.wait();
     const id = findEventId(rc, dao.interface, "ProposalCreated");
 
@@ -263,6 +270,7 @@ describe("DAO governance flow", function () {
 
     await ethers.provider.send("evm_increaseTime", [170]);
     await ethers.provider.send("evm_mine");
+    await time.increase(30);
 
     const execTx = await dao.connect(carol).executeProposal(id);
     await expect(execTx).to.emit(dao, "ProposalExecuted");
@@ -279,7 +287,7 @@ describe("DAO governance flow", function () {
     const [, , , , stranger] = await ethers.getSigners();
     
     await expect(
-      dao.connect(stranger).createProposal(mockAddr, data, deadline)
+      dao.connect(stranger).createProposal(mockAddr, data, deadline, "")
     ).to.be.revertedWith("Insufficient balance to create proposal");
   });
 
