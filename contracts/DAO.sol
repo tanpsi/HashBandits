@@ -36,13 +36,14 @@
             uint256 againstVotes;
             bool executed;
             address creator;
+            string cid; // IPFS CID of the target contract's source file; empty if not provided
         }
 
         Proposal[] public proposals;
 
         mapping(uint256 => mapping(address => bool)) public hasVoted;
 
-        event ProposalCreated(uint256 indexed id, address indexed creator, address target, uint256 snapshotId, uint256 deadline);
+        event ProposalCreated(uint256 indexed id, address indexed creator, address target, uint256 snapshotId, uint256 deadline, string cid);
         event VoteCast(uint256 indexed id, address indexed voter, bool support, uint256 weight);
         event ProposalExecuted(uint256 indexed id);
         event ProposalCancelled(uint256 indexed id);
@@ -62,7 +63,8 @@
         /// @param target Target contract to call if executed
         /// @param data Calldata to pass to `target` on execute
         /// @param deadline Timestamp after which voting closes (must be at least MIN_VOTING_DURATION away)
-        function createProposal(address target, bytes calldata data, uint256 deadline) external returns (uint256) {
+        /// @param cid IPFS CID of the target contract's source file; pass empty string if not applicable
+        function createProposal(address target, bytes calldata data, uint256 deadline, string calldata cid) external returns (uint256) {
             require(deadline > block.timestamp + MIN_VOTING_DURATION, "Voting duration too short");
             // Check minimum token balance to prevent spam
             require(token.balanceOf(msg.sender) >= MIN_PROPOSAL_CREATION_POWER, "Insufficient balance to create proposal");
@@ -75,11 +77,12 @@
                 forVotes: 0,
                 againstVotes: 0,
                 executed: false,
-                creator: msg.sender
+                creator: msg.sender,
+                cid: cid
             });
             proposals.push(p);
             uint256 id = proposals.length - 1;
-            emit ProposalCreated(id, msg.sender, target, snapshotId, deadline);
+            emit ProposalCreated(id, msg.sender, target, snapshotId, deadline, cid);
             return id;
         }
 

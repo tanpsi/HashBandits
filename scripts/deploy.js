@@ -1,5 +1,7 @@
 async function main() {
   const [deployer] = await ethers.getSigners();
+  const network = await ethers.provider.getNetwork();
+  console.log("Network:", network.name, `(chainId: ${network.chainId})`);
   console.log("Deploying with", deployer.address);
 
   const Token = await ethers.getContractFactory("GovernanceToken");
