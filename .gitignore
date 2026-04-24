@@ -6,3 +6,4 @@ reports/
 typechain/
 artifacts/
 cache/
+.next/
