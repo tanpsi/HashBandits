@@ -1,34 +1,66 @@
+const fs = require("fs");
+
+async function verify(hre, address, constructorArguments) {
+  try {
+    await hre.run("verify:verify", { address, constructorArguments });
+  } catch (e) {
+    if (e.message.includes("Already Verified")) {
+      console.log("Already verified:", address);
+    } else {
+      console.warn("Verification failed for", address, "—", e.message);
+    }
+  }
+}
+
 async function main() {
+  const hre = require("hardhat");
+  const { ethers } = hre;
+
   const [deployer] = await ethers.getSigners();
   const network = await ethers.provider.getNetwork();
   console.log("Network:", network.name, `(chainId: ${network.chainId})`);
   console.log("Deploying with", deployer.address);
 
+  const TOKEN_NAME = "GovToken";
+  const TOKEN_SYMBOL = "GOV";
+  const TOKEN_SUPPLY = ethers.parseEther("1000");
+  const QUORUM_PERCENT = 30;
+
   const Token = await ethers.getContractFactory("GovernanceToken");
-  const token = await Token.deploy(
-    "GovToken",
-    "GOV",
-    ethers.parseEther("1000"),
-  );
+  const token = await Token.deploy(TOKEN_NAME, TOKEN_SYMBOL, TOKEN_SUPPLY);
   await token.waitForDeployment();
-  console.log("Token deployed to", await token.getAddress());
+  const tokenAddress = await token.getAddress();
+  console.log("Token deployed to", tokenAddress);
 
   const DAO = await ethers.getContractFactory("DAO");
-  const dao = await DAO.deploy(await token.getAddress(), 30);
+  const dao = await DAO.deploy(tokenAddress, QUORUM_PERCENT);
   await dao.waitForDeployment();
-  console.log("DAO deployed to", await dao.getAddress());
+  const daoAddress = await dao.getAddress();
+  console.log("DAO deployed to", daoAddress);
 
-  // grant snapshot role to dao
   const SNAPSHOT_ROLE = await token.SNAPSHOT_ROLE();
-  await token.grantRole(SNAPSHOT_ROLE, await dao.getAddress());
+  await token.grantRole(SNAPSHOT_ROLE, daoAddress);
   console.log("Granted snapshot role to DAO");
 
-  // 👇 --- ADDED: DEPLOY MOCK TARGET --- 👇
   const MockTarget = await ethers.getContractFactory("MockTarget");
   const target = await MockTarget.deploy();
   await target.waitForDeployment();
-  console.log("MockTarget deployed to", await target.getAddress());
-  // 👆 --------------------------------- 👆
+  const targetAddress = await target.getAddress();
+  console.log("MockTarget deployed to", targetAddress);
+
+  const addresses = { token: tokenAddress, dao: daoAddress, mockTarget: targetAddress };
+  fs.writeFileSync("deployed-addresses.json", JSON.stringify(addresses, null, 2));
+  console.log("Addresses saved to deployed-addresses.json");
+
+  // Etherscan verification only makes sense on live networks
+  if (network.chainId !== 31337n) {
+    console.log("\nWaiting 30s for Etherscan to index contracts...");
+    await new Promise((r) => setTimeout(r, 30_000));
+
+    await verify(hre, tokenAddress, [TOKEN_NAME, TOKEN_SYMBOL, TOKEN_SUPPLY]);
+    await verify(hre, daoAddress, [tokenAddress, QUORUM_PERCENT]);
+    await verify(hre, targetAddress, []);
+  }
 }
 
 main()
