@@ -11,6 +11,8 @@ import TokenTransfer from "./components/TokenTransfer";
 import ContractConfig from "./components/ContractConfig";
 import Toast from "./components/Toast";
 
+
+
 export default function Home() {
   const {
     account,
@@ -64,6 +66,7 @@ export default function Home() {
             againstVotes: p.againstVotes,
             executed: p.executed,
             creator: p.creator,
+            cid: p.cid,
           });
           i++;
         } catch {
@@ -92,7 +95,7 @@ export default function Home() {
       try {
         const val = await mockTargetContract.value();
         setMockValue(val.toString());
-      } catch {}
+      } catch { }
     }
   }, [daoContract, tokenContract, mockTargetContract]);
 

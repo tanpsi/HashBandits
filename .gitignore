@@ -2,8 +2,10 @@ node_modules/
 coverage/
 coverage.json
 reports/
-./.env
+.env
 typechain/
 artifacts/
 cache/
 .next/
+**/.env
+deployed-addresses.json

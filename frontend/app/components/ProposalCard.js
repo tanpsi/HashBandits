@@ -180,6 +180,21 @@ export default function ProposalCard({ proposalId, proposal, onToast }) {
               {ethers.formatEther(votingPower)} {" "}
             </span>
           </div>
+          {proposal.cid && proposal.cid !== "0" && (
+            <div className="proposal-meta-item">
+              <span className="proposal-meta-label">Target Source</span>
+              <span className="proposal-meta-value">
+                <a
+                  href={`https://gateway.pinata.cloud/ipfs/${proposal.cid}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "var(--accent-primary)", textDecoration: "underline" }}
+                >
+                  View on IPFS
+                </a>
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

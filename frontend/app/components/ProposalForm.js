@@ -4,6 +4,7 @@ import { ethers } from "ethers";
 import { useWeb3 } from "../context/Web3Context";
 import { getSavedAddresses } from "../contracts/config";
 import { MOCK_TARGET_ABI } from "../contracts/abis";
+import { uploadSourceToPinata } from "../actions";
 
 export default function ProposalForm({ onClose, onSuccess }) {
   const { daoContract } = useWeb3();
@@ -19,6 +20,9 @@ export default function ProposalForm({ onClose, onSuccess }) {
   const [calldata, setCalldata] = useState("");
   const [customDeadline, setCustomDeadline] = useState("");
 
+  // Target Source Code
+  const [sourceCode, setSourceCode] = useState("");
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -31,14 +35,19 @@ export default function ProposalForm({ onClose, onSuccess }) {
         const iface = new ethers.Interface(MOCK_TARGET_ABI);
         data = iface.encodeFunctionData("setValue", [parseInt(mockValue)]);
         const now = Math.floor(Date.now() / 1000);
-        deadline = now + parseInt(votingHours) * 3600;
+        deadline = now + Math.floor(parseFloat(votingHours) * 3600);
       } else {
         target = targetAddress;
         data = calldata.startsWith("0x") ? calldata : "0x" + calldata;
         deadline = Math.floor(new Date(customDeadline).getTime() / 1000);
       }
 
-      const tx = await daoContract.createProposal(target, data, deadline);
+      let cid = "0";
+      if (sourceCode && sourceCode.trim() !== "") {
+        cid = await uploadSourceToPinata(sourceCode);
+      }
+
+      const tx = await daoContract.createProposal(target, data, deadline, cid);
       const receipt = await tx.wait();
 
       // Parse the ProposalCreated event to get the ID
@@ -50,7 +59,7 @@ export default function ProposalForm({ onClose, onSuccess }) {
             proposalId = parsed.args.id;
             break;
           }
-        } catch (_) {}
+        } catch (_) { }
       }
 
       onSuccess(
@@ -168,6 +177,21 @@ export default function ProposalForm({ onClose, onSuccess }) {
               </div>
             </>
           )}
+
+          <div className="form-group">
+            <label className="form-label">Target Source Code (Optional)</label>
+            <textarea
+              className="form-input mono"
+              placeholder="Paste the verified source code here..."
+              value={sourceCode}
+              onChange={(e) => setSourceCode(e.target.value)}
+              rows={4}
+              style={{ resize: "vertical" }}
+            />
+            <div className="form-hint">
+              If provided, code will be uploaded to IPFS via Pinata
+            </div>
+          </div>
 
           <div className="modal-actions">
             <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>
