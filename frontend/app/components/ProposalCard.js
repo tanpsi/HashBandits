@@ -291,14 +291,14 @@ export default function ProposalCard({ proposalId, proposal, onToast }) {
               onClick={() => handleVote(true)}
               disabled={loading}
             >
-              {loading ? <span className="spinner" /> : "👍 Vote For"}
+              {loading ? <span className="spinner" /> : "Vote For"}
             </button>
             <button
               className="btn btn-danger btn-sm"
               onClick={() => handleVote(false)}
               disabled={loading}
             >
-              {loading ? <span className="spinner" /> : "👎 Vote Against"}
+              {loading ? <span className="spinner" /> : "Vote Against"}
             </button>
           </>
         )}
