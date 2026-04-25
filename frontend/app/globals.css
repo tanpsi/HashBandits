@@ -1120,3 +1120,121 @@ select.form-input {
     padding: 24px;
   }
 }
+
+/* ===== NETWORK SELECTOR ===== */
+.network-selector-bar,
+.network-selector-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.network-selector-bar::before,
+.network-selector-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(135deg, #3b82f6, #60a5fa, #93c5fd);
+}
+
+.network-selector-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  letter-spacing: 0.3px;
+}
+
+.network-selector-options {
+  display: flex;
+  gap: 10px;
+}
+
+.network-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.network-option:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.network-option.active {
+  border-color: var(--info-border);
+  background: var(--info-bg);
+  color: var(--info);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.12);
+}
+
+.network-option-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.network-option-dot.live {
+  background: var(--info);
+  box-shadow: 0 0 8px var(--info);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.network-option-chain {
+  margin-left: auto;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.network-option.active .network-option-chain {
+  color: var(--info);
+  opacity: 0.8;
+}
+
+.network-selector-current {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 8px 12px;
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-primary);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.network-selector-current strong {
+  color: var(--info);
+}
+
+@media (max-width: 640px) {
+  .network-selector-options {
+    flex-direction: column;
+  }
+}

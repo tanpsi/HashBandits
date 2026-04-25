@@ -5,9 +5,50 @@ export const DEFAULT_ADDRESSES = {
   MockTarget: "",
 };
 
-export const CHAIN_ID = 31337;
-export const NETWORK_NAME = "Hardhat Local";
-export const RPC_URL = "http://127.0.0.1:8545";
+export const NETWORKS = {
+  localhost: {
+    key: "localhost",
+    chainId: Number(process.env.NEXT_PUBLIC_LOCAL_CHAIN_ID || 31337),
+    name: process.env.NEXT_PUBLIC_LOCAL_NETWORK || "Hardhat Local",
+    rpcUrl: process.env.NEXT_PUBLIC_LOCAL_RPC_URL || "http://127.0.0.1:8545",
+  },
+  sepolia: {
+    key: "sepolia",
+    chainId: Number(process.env.NEXT_PUBLIC_SEPOLIA_CHAIN_ID || 11155111),
+    name: process.env.NEXT_PUBLIC_SEPOLIA_NETWORK || "Sepolia",
+    rpcUrl: process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || "https://rpc.sepolia.org",
+  },
+};
+
+const NETWORK_STORAGE_KEY = "dao_active_network";
+
+export function getActiveNetworkKey() {
+  if (typeof window === "undefined") return "sepolia";
+  try {
+    const saved = localStorage.getItem(NETWORK_STORAGE_KEY);
+    if (saved && NETWORKS[saved]) return saved;
+  } catch {}
+  return "sepolia";
+}
+
+export function setActiveNetworkKey(key) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(NETWORK_STORAGE_KEY, key);
+}
+
+export function getActiveNetwork() {
+  return NETWORKS[getActiveNetworkKey()];
+}
+
+// Convenience exports — these reflect the persisted selection
+export function getCHAIN_ID() { return getActiveNetwork().chainId; }
+export function getNETWORK_NAME() { return getActiveNetwork().name; }
+export function getRPC_URL() { return getActiveNetwork().rpcUrl; }
+
+// Keep static exports for backward-compat (initial load value)
+export const CHAIN_ID = NETWORKS["sepolia"].chainId;
+export const NETWORK_NAME = NETWORKS["sepolia"].name;
+export const RPC_URL = NETWORKS["sepolia"].rpcUrl;
 
 const STORAGE_KEY = "dao_contract_addresses";
 

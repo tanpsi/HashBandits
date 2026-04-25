@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
 import { useWeb3 } from "./context/Web3Context";
-import { areAddressesConfigured, getSavedAddresses } from "./contracts/config";
+import { areAddressesConfigured, getSavedAddresses, NETWORKS, getActiveNetworkKey, setActiveNetworkKey } from "./contracts/config";
 import Header from "./components/Header";
 import ProposalCard from "./components/ProposalCard";
 import ProposalForm from "./components/ProposalForm";
@@ -24,6 +24,9 @@ export default function Home() {
     tokenBalance,
     tokenSymbol,
     connectWallet,
+    disconnectWallet,
+    activeNetworkKey,
+    setActiveNetworkKey: setCtxNetworkKey,
   } = useWeb3();
 
   const [proposals, setProposals] = useState([]);
@@ -43,6 +46,13 @@ export default function Home() {
   useEffect(() => {
     setConfigReady(areAddressesConfigured());
   }, []);
+
+  // Handle network switch
+  const handleNetworkSwitch = useCallback((newKey) => {
+    setActiveNetworkKey(newKey);    // persist to localStorage
+    setCtxNetworkKey(newKey);       // update context state
+    disconnectWallet();             // disconnect so user reconnects on new chain
+  }, [setCtxNetworkKey, disconnectWallet]);
 
   const showToast = useCallback((message, type = "info") => {
     setToast({ message, type });
@@ -167,6 +177,23 @@ export default function Home() {
     return (
       <div className="app-container">
         <Header onShowConfig={() => setShowConfig(true)} configReady={configReady} />
+        {/* Network Selector */}
+        <div className="network-selector-bar">
+          <div className="network-selector-label">🌐 Select Network</div>
+          <div className="network-selector-options">
+            {Object.entries(NETWORKS).map(([key, net]) => (
+              <button
+                key={key}
+                className={`network-option ${activeNetworkKey === key ? "active" : ""}`}
+                onClick={() => handleNetworkSwitch(key)}
+              >
+                <span className={`network-option-dot ${activeNetworkKey === key ? "live" : ""}`} />
+                {net.name}
+                <span className="network-option-chain">Chain {net.chainId}</span>
+              </button>
+            ))}
+          </div>
+        </div>
         <ContractConfig onConfigured={handleConfigured} />
         <Toast
           message={toast.message}
@@ -180,6 +207,7 @@ export default function Home() {
   // Not connected screen
   if (!account) {
     const savedAddr = getSavedAddresses();
+    const activeNet = NETWORKS[activeNetworkKey];
     return (
       <div className="app-container">
         <Header onShowConfig={() => setShowConfig(true)} configReady={configReady} />
@@ -192,6 +220,27 @@ export default function Home() {
               Create proposals, vote with your governance tokens, and help shape
               the future of this DAO.
             </p>
+
+            {/* Network Selector */}
+            <div className="network-selector-card">
+              <div className="network-selector-label">🌐 Select Network</div>
+              <div className="network-selector-options">
+                {Object.entries(NETWORKS).map(([key, net]) => (
+                  <button
+                    key={key}
+                    className={`network-option ${activeNetworkKey === key ? "active" : ""}`}
+                    onClick={() => handleNetworkSwitch(key)}
+                  >
+                    <span className={`network-option-dot ${activeNetworkKey === key ? "live" : ""}`} />
+                    {net.name}
+                    <span className="network-option-chain">Chain {net.chainId}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="network-selector-current">
+                Connecting to <strong>{activeNet.name}</strong> ({activeNet.rpcUrl})
+              </div>
+            </div>
 
             {/* Show configured addresses */}
             <div style={{

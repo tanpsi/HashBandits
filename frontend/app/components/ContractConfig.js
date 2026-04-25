@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
-import { getSavedAddresses, saveAddresses, clearAddresses, CHAIN_ID, NETWORK_NAME, RPC_URL } from "../contracts/config";
+import { getSavedAddresses, saveAddresses, clearAddresses, getCHAIN_ID, getNETWORK_NAME, getRPC_URL } from "../contracts/config";
 
 export default function ContractConfig({ onConfigured }) {
   const [addresses, setAddresses] = useState({
@@ -34,7 +34,7 @@ export default function ContractConfig({ onConfigured }) {
         setMmAccount(accounts[0]);
       }
       const chainIdHex = await window.ethereum.request({ method: "eth_chainId" });
-      setMmChainOk(parseInt(chainIdHex, 16) === CHAIN_ID);
+      setMmChainOk(parseInt(chainIdHex, 16) === getCHAIN_ID());
     } catch {}
   };
 
@@ -90,20 +90,20 @@ export default function ContractConfig({ onConfigured }) {
   };
 
   // ===== MetaMask actions =====
-  const addHardhatNetwork = async () => {
+  const addNetwork = async () => {
     setMmStatus("");
     try {
       await window.ethereum.request({
         method: "wallet_addEthereumChain",
         params: [{
-          chainId: "0x" + CHAIN_ID.toString(16),
-          chainName: NETWORK_NAME,
-          rpcUrls: [RPC_URL],
+          chainId: "0x" + getCHAIN_ID().toString(16),
+          chainName: getNETWORK_NAME(),
+          rpcUrls: [getRPC_URL()],
           nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
         }],
       });
       setMmChainOk(true);
-      setMmStatus("✓ Hardhat network added!");
+      setMmStatus(`✓ ${getNETWORK_NAME()} network added!`);
     } catch (err) {
       if (err.code === 4001) {
         setMmStatus("User rejected the request");
@@ -113,19 +113,19 @@ export default function ContractConfig({ onConfigured }) {
     }
   };
 
-  const switchToHardhat = async () => {
+  const switchNetwork = async () => {
     setMmStatus("");
     try {
       await window.ethereum.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x" + CHAIN_ID.toString(16) }],
+        params: [{ chainId: "0x" + getCHAIN_ID().toString(16) }],
       });
       setMmChainOk(true);
-      setMmStatus("✓ Switched to Hardhat network!");
+      setMmStatus(`✓ Switched to ${getNETWORK_NAME()} network!`);
     } catch (err) {
       if (err.code === 4902) {
         // Chain not added yet, add it
-        await addHardhatNetwork();
+        await addNetwork();
       } else if (err.code === 4001) {
         setMmStatus("User rejected the request");
       } else {
@@ -185,7 +185,7 @@ export default function ContractConfig({ onConfigured }) {
           <div className="config-step-badge">Step 1</div>
           <h3 className="config-section-title">🦊 Configure MetaMask</h3>
           <p className="config-section-desc">
-            Set up MetaMask to connect to your local Hardhat network.
+            Set up MetaMask to connect to the {getNETWORK_NAME()} network.
           </p>
 
           {!hasMetaMask ? (
@@ -203,7 +203,7 @@ export default function ContractConfig({ onConfigured }) {
                   <span className="mm-row-label">Network</span>
                   <span className="mm-row-value">
                     {mmChainOk ? (
-                      <span className="mm-ok">● Hardhat Local</span>
+                      <span className="mm-ok">● {getNETWORK_NAME()}</span>
                     ) : (
                       <span className="mm-not">● Not connected</span>
                     )}
@@ -211,7 +211,7 @@ export default function ContractConfig({ onConfigured }) {
                 </div>
                 <button
                   className="btn btn-outline btn-sm"
-                  onClick={switchToHardhat}
+                  onClick={switchNetwork}
                   type="button"
                 >
                   {mmChainOk ? "Re-add Network" : "Add & Switch"}
@@ -245,9 +245,7 @@ export default function ContractConfig({ onConfigured }) {
               )}
 
               <div className="mm-tip">
-                <strong>💡 Tip:</strong> Import a Hardhat test account in MetaMask via{" "}
-                <em>Import Account → Private Key</em>. Use the keys shown when you run{" "}
-                <code className="config-code-inline">npx hardhat node</code>.
+                <strong>💡 Tip:</strong> Ensure you have the right network native asset (ETH) to interact. Use a faucet if you need testnet funds.
               </div>
             </div>
           )}
@@ -262,7 +260,7 @@ export default function ContractConfig({ onConfigured }) {
           <p className="config-section-desc">
             Paste addresses from{" "}
             <code className="config-code-inline">
-              npx hardhat run scripts/deploy.js --network localhost
+              npx hardhat run scripts/deploy.js --network {getNETWORK_NAME().toLowerCase().split(' ')[0] === "hardhat" ? "localhost" : "sepolia"}
             </code>
           </p>
 

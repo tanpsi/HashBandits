@@ -54,6 +54,69 @@ function Countdown({ deadline }) {
   return <span className={`countdown ${urgency}`}>{timeLeft}</span>;
 }
 
+
+const EXECUTION_DELAY = 30; // Must match DAO.sol EXECUTION_DELAY (30 seconds)
+
+function ExecuteSection({ proposal, loading, onExecute }) {
+  const [timeLeft, setTimeLeft] = useState(null);
+  const [canExecute, setCanExecute] = useState(false);
+
+  useEffect(() => {
+    const update = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const executeAfter = Number(proposal.deadline) + EXECUTION_DELAY;
+      const diff = executeAfter - now;
+
+      if (diff <= 0) {
+        setCanExecute(true);
+        setTimeLeft(null);
+      } else {
+        setCanExecute(false);
+        const mins = Math.floor(diff / 60);
+        const secs = diff % 60;
+        setTimeLeft(mins > 0 ? `${mins}m ${secs}s` : `${secs}s`);
+      }
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [proposal.deadline]);
+
+  if (!canExecute) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <button className="btn btn-primary btn-sm" disabled style={{ opacity: 0.5 }}>
+          ⏳ Timelock
+        </button>
+        <span
+          className="countdown active"
+          style={{
+            fontSize: 12,
+            animation: "pulse 1.5s ease-in-out infinite",
+          }}
+        >
+          Executable in {timeLeft}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      className="btn btn-primary btn-sm"
+      onClick={onExecute}
+      disabled={loading}
+      style={{
+        boxShadow: "0 0 12px rgba(99, 102, 241, 0.4)",
+        animation: "pulse 2s ease-in-out infinite",
+      }}
+    >
+      {loading ? <span className="spinner" /> : "⚡ Execute Proposal"}
+    </button>
+  );
+}
+
 export default function ProposalCard({ proposalId, proposal, onToast }) {
   const { daoContract, account, tokenContract } = useWeb3();
   const [loading, setLoading] = useState(false);
@@ -316,13 +379,11 @@ export default function ProposalCard({ proposalId, proposal, onToast }) {
         )}
 
         {status === "passed" && (
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={handleExecute}
-            disabled={loading}
-          >
-            {loading ? <span className="spinner" /> : "⚡ Execute"}
-          </button>
+          <ExecuteSection
+            proposal={proposal}
+            loading={loading}
+            onExecute={handleExecute}
+          />
         )}
 
         {canCancel && (

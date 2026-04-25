@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { ethers } from "ethers";
-import { getSavedAddresses, CHAIN_ID, NETWORK_NAME, RPC_URL } from "../contracts/config";
+import { getSavedAddresses, getActiveNetworkKey, getActiveNetwork, NETWORKS } from "../contracts/config";
 import { DAO_ABI, TOKEN_ABI, MOCK_TARGET_ABI } from "../contracts/abis";
 
 const Web3Context = createContext(null);
@@ -19,8 +19,15 @@ export function Web3Provider({ children }) {
   const [tokenBalance, setTokenBalance] = useState("0");
   const [tokenSymbol, setTokenSymbol] = useState("GOV");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [activeNetworkKey, setActiveNetworkKey] = useState("sepolia");
 
-  const isCorrectNetwork = chainId === CHAIN_ID;
+  // Hydrate from localStorage on mount
+  useEffect(() => {
+    setActiveNetworkKey(getActiveNetworkKey());
+  }, []);
+
+  const activeNet = NETWORKS[activeNetworkKey] || NETWORKS["sepolia"];
+  const isCorrectNetwork = chainId === activeNet.chainId;
 
   const connectWallet = useCallback(async () => {
     if (!window.ethereum) {
@@ -34,6 +41,8 @@ export function Web3Provider({ children }) {
       return;
     }
 
+    const net = getActiveNetwork();
+
     setIsConnecting(true);
     setError(null);
 
@@ -44,20 +53,20 @@ export function Web3Provider({ children }) {
       const currentChainId = Number(network.chainId);
       setChainId(currentChainId);
 
-      if (currentChainId !== CHAIN_ID) {
+      if (currentChainId !== net.chainId) {
         try {
           await window.ethereum.request({
             method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0x" + CHAIN_ID.toString(16) }],
+            params: [{ chainId: "0x" + net.chainId.toString(16) }],
           });
         } catch (switchError) {
           if (switchError.code === 4902) {
             await window.ethereum.request({
               method: "wallet_addEthereumChain",
               params: [{
-                chainId: "0x" + CHAIN_ID.toString(16),
-                chainName: NETWORK_NAME,
-                rpcUrls: [RPC_URL],
+                chainId: "0x" + net.chainId.toString(16),
+                chainName: net.name,
+                rpcUrls: [net.rpcUrl],
                 nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
               }],
             });
@@ -103,7 +112,7 @@ export function Web3Provider({ children }) {
     } finally {
       setIsConnecting(false);
     }
-  }, []);
+  }, [activeNetworkKey]);
 
   const disconnectWallet = useCallback(() => {
     setAccount(null);
@@ -169,6 +178,8 @@ export function Web3Provider({ children }) {
         tokenBalance,
         tokenSymbol,
         isAdmin,
+        activeNetworkKey,
+        setActiveNetworkKey,
         connectWallet,
         disconnectWallet,
         refreshBalance,

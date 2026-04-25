@@ -1,5 +1,6 @@
 "use client";
 import { useWeb3 } from "../context/Web3Context";
+import { NETWORKS } from "../contracts/config";
 
 export default function Header({ onShowConfig, configReady }) {
   const {
@@ -9,9 +10,12 @@ export default function Header({ onShowConfig, configReady }) {
     tokenBalance,
     tokenSymbol,
     isAdmin,
+    activeNetworkKey,
     connectWallet,
     disconnectWallet,
   } = useWeb3();
+
+  const activeNet = NETWORKS[activeNetworkKey] || NETWORKS["sepolia"];
 
   const shortAddr = account
     ? `${account.slice(0, 6)}...${account.slice(-4)}`
@@ -44,7 +48,7 @@ export default function Header({ onShowConfig, configReady }) {
             {isCorrectNetwork ? (
               <div className="network-badge connected">
                 <span className="network-dot green" />
-                Hardhat Local
+                {activeNet.name}
               </div>
             ) : (
               <div className="network-badge wrong">
