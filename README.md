@@ -4,9 +4,12 @@
 This project implements a complete DAO governance system with snapshot-based voting, proposal creation/execution, and access control. It demonstrates core DeFi concepts including governance tokens, on-chain voting, and contract-to-contract calls.
 
 ## Team Members
-- **Team Member 1**: [Full Name] - [Roll Number]
-- **Team Member 2**: [Full Name] - [Roll Number]
-- **Team Member 3**: [Full Name] - [Roll Number]
+- **Team Member 1**: Rudra - 240041031
+- **Team Member 2**: Tanish Yadav - 240041036
+- **Team Member 3**: Khush Kumar Singh - 240041023
+- **Team Member 4**: Aditya Rai - 240041002
+- **Team Member 5**: Sarath Chandra KVL - 240001039
+- **Team Member 6**: Rohan Chauhan - 240001061
 
 *Note: Replace placeholders with actual team member names and roll numbers.*
 

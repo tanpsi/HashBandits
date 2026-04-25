@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
 import { useWeb3 } from "../context/Web3Context";
-import { fetchSourceFromPinata, getLocalContractSource } from "../actions";
+import { fetchSourceFromPinata } from "../actions";
 
 function getProposalStatus(proposal) {
   if (proposal.executed && proposal.forVotes === 0n && proposal.againstVotes === 0n) {
@@ -229,7 +229,10 @@ export default function ProposalCard({ proposalId, proposal, onToast }) {
     // Wait 10 seconds before performing the verification check
     await new Promise((resolve) => setTimeout(resolve, 10000));
     try {
-      const localSource = await getLocalContractSource();
+      // Fetch the reference contract from public/ (works on Vercel)
+      const res = await fetch("/contracts/MockTarget.sol");
+      if (!res.ok) throw new Error("Failed to fetch reference contract");
+      const localSource = await res.text();
       // Compare trimmed versions to ignore trailing whitespace differences
       if (sourceCode.trim() === localSource.trim()) {
         setIsVerified(true);
