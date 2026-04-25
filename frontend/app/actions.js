@@ -1,6 +1,8 @@
 "use server";
 
 import { PinataSDK } from "pinata";
+import fs from "fs/promises";
+import path from "path";
 
 // Upload source code to IPFS using Pinata
 export async function uploadSourceToPinata(sourceCode) {
@@ -44,5 +46,19 @@ export async function fetchSourceFromPinata(cid) {
   } catch (error) {
     console.error("Pinata fetch error:", error);
     throw new Error("Failed to fetch source code from Pinata: " + error.message);
+  }
+}
+
+// Read the local MockTarget.sol contract source for verification
+export async function getLocalContractSource() {
+  try {
+    // Navigate from frontend/app/actions.js -> project root -> contracts/MockTarget.sol
+    const projectRoot = path.resolve(process.cwd(), "..");
+    const contractPath = path.join(projectRoot, "contracts", "MockTarget.sol");
+    const source = await fs.readFile(contractPath, "utf-8");
+    return source;
+  } catch (error) {
+    console.error("Failed to read local contract source:", error);
+    throw new Error("Failed to read local contract source: " + error.message);
   }
 }

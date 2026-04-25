@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
 import { useWeb3 } from "../context/Web3Context";
-import { fetchSourceFromPinata } from "../actions";
+import { fetchSourceFromPinata, getLocalContractSource } from "../actions";
 
 function getProposalStatus(proposal) {
   if (proposal.executed && proposal.forVotes === 0n && proposal.againstVotes === 0n) {
@@ -125,8 +125,9 @@ export default function ProposalCard({ proposalId, proposal, onToast }) {
 
   const [sourceCode, setSourceCode] = useState(null);
   const [loadingSource, setLoadingSource] = useState(false);
-  const [isVerified, setIsVerified] = useState(false); // Verify
-  const [isVerifying, setIsVerifying] = useState(false); // Verify
+  const [isVerified, setIsVerified] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isDenied, setIsDenied] = useState(false);
 
   const status = getProposalStatus(proposal);
 
@@ -206,8 +207,9 @@ export default function ProposalCard({ proposalId, proposal, onToast }) {
   const handleFetchSource = async () => {
     if (sourceCode) {
       setSourceCode(null); // toggle off
-      setIsVerified(false); // Verify
-      setIsVerifying(false); // Verify
+      setIsVerified(false);
+      setIsVerifying(false);
+      setIsDenied(false);
       return;
     }
     setLoadingSource(true);
@@ -221,13 +223,25 @@ export default function ProposalCard({ proposalId, proposal, onToast }) {
     }
   };
 
-  // Verify
-  const handleVerifyClick = () => {
+  const handleVerifyClick = async () => {
     setIsVerifying(true);
-    setTimeout(() => {
+    setIsDenied(false);
+    // Wait 10 seconds before performing the verification check
+    await new Promise((resolve) => setTimeout(resolve, 10000));
+    try {
+      const localSource = await getLocalContractSource();
+      // Compare trimmed versions to ignore trailing whitespace differences
+      if (sourceCode.trim() === localSource.trim()) {
+        setIsVerified(true);
+      } else {
+        setIsDenied(true);
+      }
+    } catch (err) {
+      console.error("Verification failed:", err);
+      setIsDenied(true);
+    } finally {
       setIsVerifying(false);
-      setIsVerified(true);
-    }, 8000);
+    }
   };
 
   const deadlineDate = new Date(Number(proposal.deadline) * 1000);
@@ -299,22 +313,22 @@ export default function ProposalCard({ proposalId, proposal, onToast }) {
                   <button
                     className="btn btn-sm"
                     style={{
-                      backgroundColor: isVerified ? "var(--success)" : "#10b981",
+                      backgroundColor: isDenied ? "#ef4444" : isVerified ? "var(--success)" : "#10b981",
                       color: "#fff",
                       border: "none",
                       width: "100%",
-                      opacity: isVerified || isVerifying ? 0.8 : 1,
-                      cursor: isVerified || isVerifying ? "default" : "pointer",
+                      opacity: isVerified || isVerifying || isDenied ? 0.8 : 1,
+                      cursor: isVerified || isVerifying || isDenied ? "default" : "pointer",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center"
                     }}
                     onClick={handleVerifyClick}
-                    disabled={isVerified || isVerifying}
+                    disabled={isVerified || isVerifying || isDenied}
                   >
                     {isVerifying ? (
                       <><span className="spinner" style={{ width: 14, height: 14, marginRight: 6, borderWidth: 2 }} /> Verifying...</>
-                    ) : isVerified ? "Verified" : "Verify Source Code"}
+                    ) : isVerified ? "✓ Verified" : isDenied ? "✗ Verification Denied" : "Verify Source Code"}
                   </button>
                 </div>
               )}
