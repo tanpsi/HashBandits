@@ -501,6 +501,10 @@ frontend/
 ├── next.config.mjs
 ├── package.json
 └── package-lock.json
+README.md
+hardhat.config.js
+package-lock.json
+package.json
 ```
 
 
