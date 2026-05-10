@@ -272,7 +272,13 @@ All major state-changing operations validate:
 - Execution conditions
 
 ---
+# Known Issues & Limitations
 
+- **Voting Privacy:** Voter choices and weights are completely public on the blockchain. There is no privacy-preserving mechanism (like Zero-Knowledge Proofs) implemented, which is standard for basic DAOs but worth noting.
+- **Cancellation Front-Running:** A malicious user could theoretically front-run a proposal cancellation by immediately casting a tiny vote, preventing the creator from calling `cancelProposal()` since it requires both vote tallies to be zero.
+- **No Emergency Pause:** If a critical vulnerability is found, there is no emergency pause (circuit breaker) functionality to halt the DAO.
+
+---
 # Gas Optimization
 
 The contracts underwent multiple optimization iterations and achieved approximately **48.1% total deployment gas reduction**.
