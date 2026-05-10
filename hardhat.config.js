@@ -10,6 +10,11 @@ const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 module.exports = {
   solidity: "0.8.19",
   networks: {
+    hardhat: {
+      accounts: {
+        count: 1000
+      }
+    },
     localhost: {
       url: "http://127.0.0.1:8545",
     },
