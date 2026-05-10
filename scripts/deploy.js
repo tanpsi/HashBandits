@@ -4,13 +4,13 @@ function getArgValue(argName) {
   const argPrefix = `--${argName}=`;
   const argv = process.argv.slice(2);
 
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
+  for (let argIndex = 0; argIndex < argv.length; argIndex++) {
+    const arg = argv[argIndex];
     if (arg.startsWith(argPrefix)) {
       return arg.slice(argPrefix.length);
     }
-    if (arg === `--${argName}` && i + 1 < argv.length) {
-      return argv[i + 1];
+    if (arg === `--${argName}` && argIndex + 1 < argv.length) {
+      return argv[argIndex + 1];
     }
   }
 
