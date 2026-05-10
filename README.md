@@ -12,6 +12,7 @@ The system enables token holders to:
 - Cancel proposals before voting begins
 
 The project also includes a minimal frontend integrated with MetaMask for wallet interaction and governance access.
+Link to demo : https://dao-seven-jet.vercel.app/
 
 ---
 
