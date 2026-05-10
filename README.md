@@ -55,6 +55,11 @@ npx hardhat coverage
 npx hardhat run scripts/deploy.js --network sepolia
 ```
 
+Optional: set initial governance token supply at deploy time (default: `1000`):
+```bash
+INITIAL_SUPPLY=5000 npx hardhat run scripts/deploy.js --network sepolia
+```
+
 Replace `sepolia` with your target network (e.g., `localhost`, `goerli`, `mainnet`).
 
 ## Files of Interest

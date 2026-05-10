@@ -1,5 +1,22 @@
 const fs = require("fs");
 
+function getArgValue(argName) {
+  const argPrefix = `--${argName}=`;
+  const argv = process.argv.slice(2);
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg.startsWith(argPrefix)) {
+      return arg.slice(argPrefix.length);
+    }
+    if (arg === `--${argName}` && i + 1 < argv.length) {
+      return argv[i + 1];
+    }
+  }
+
+  return undefined;
+}
+
 async function verify(hre, address, constructorArguments) {
   try {
     await hre.run("verify:verify", { address, constructorArguments });
@@ -23,7 +40,9 @@ async function main() {
 
   const TOKEN_NAME = "GovToken";
   const TOKEN_SYMBOL = "GOV";
-  const TOKEN_SUPPLY = ethers.parseEther("1000");
+  const initialSupplyInput = getArgValue("initial-supply") ?? process.env.INITIAL_SUPPLY ?? "1000";
+  const TOKEN_SUPPLY = ethers.parseEther(initialSupplyInput);
+  console.log(`Initial token supply: ${initialSupplyInput} ${TOKEN_SYMBOL}`);
   const QUORUM_PERCENT = 30;
 
   const Token = await ethers.getContractFactory("GovernanceToken");
