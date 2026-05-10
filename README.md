@@ -416,13 +416,6 @@ Automatically generated file storing deployed contract addresses after successfu
 It helps frontend applications and scripts dynamically reference deployed smart contracts without manually updating addresses after every redeployment.  
 This simplifies testing and integration across local and testnet environments.
 
----
-
-### `reports/`
-
-Contains detailed gas optimization reports, profiling outputs, and coverage analysis generated during development and optimization phases.  
-The reports document multiple optimization iterations including struct packing, custom errors, storage optimization, and Solidity optimizer integration.  
-These analyses demonstrate approximately 48.1% cumulative deployment gas reduction across the governance system.
 
 ---
 
