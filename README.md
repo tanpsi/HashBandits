@@ -449,7 +449,18 @@ Coverage results:
 | All Files | 100% | 70.83% | 100% | 100% |
 
 ---
+### DAO Load Testing
 
+Load testing was performed by simulating concurrent voting from multiple accounts on the DAO governance contract.
+
+| Accounts | Votes Cast | Time Taken (s) | Throughput (tx/sec) |
+|----------|-------------|----------------|---------------------|
+| 1000 | 999 | 1.38 | 723.91 |
+| 10000 | 9999 | 9.735 | 1027.12 |
+
+The results demonstrate that the governance system can efficiently process a high number of concurrent voting transactions while maintaining stable throughput.
+
+---
 # Frontend
 
 The frontend demonstrates:
