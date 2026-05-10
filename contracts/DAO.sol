@@ -1,142 +1,205 @@
-    // SPDX-License-Identifier: MIT
-    pragma solidity ^0.8.19;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
 
-    import "@openzeppelin/contracts/access/AccessControl.sol";
-    import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+/**
+ * @title DAO
+ * @notice Minimal DAO governance with snapshot-based voting.
+ */
+
+/// Minimal interface to interact with token snapshots
+interface ITokenSnapshot {
+    function snapshot() external returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
+    function balanceOfAt(address account, uint256 snapshotId) external view returns (uint256);
+    function totalSupplyAt(uint256 snapshotId) external view returns (uint256);
+}
+
+error InvalidQuorum();
+error ProposalNotFound();
+error AlreadyExecuted();
+error VotingClosed();
+error AlreadyVoted();
+error NoVotingPower();
+error NotCreator();
+error VotingDurationTooShort();
+error InsufficientBalance();
+error QuorumNotReached();
+error NotMajority();
+error ExecutionDelayNotPassed();
+error ExecutionFailed();
+error VotesAlreadyCast();
+error TotalSupplyZero();
+
+contract DAO is AccessControl, ReentrancyGuard {
+    bytes32 public constant ADMIN_ROLE = DEFAULT_ADMIN_ROLE;
+
+    uint256 public constant MIN_VOTING_DURATION = 45 seconds;
+    uint256 public constant MIN_PROPOSAL_CREATION_POWER = 10e18;
+    uint256 public constant EXECUTION_DELAY = 30 seconds;
+
+    ITokenSnapshot public immutable token;
+
+    // max value only 100 → uint8 sufficient
+    uint8 public quorumPercent;
+
+    struct Proposal {
+        address target;
+        address creator;
+
+        bytes data;
+
+        uint256 snapshotId;
+        uint256 deadline;
+
+        uint256 forVotes;
+        uint256 againstVotes;
+
+        bool executed;
+    }
+
+    Proposal[] public proposals;
+
+    mapping(uint256 => mapping(address => bool)) public hasVoted;
+
+    event ProposalCreated(
+        uint256 indexed id,
+        address indexed creator,
+        address target,
+        uint256 snapshotId,
+        uint256 deadline,
+        string cid
+    );
+
+    event VoteCast(
+        uint256 indexed id,
+        address indexed voter,
+        bool support,
+        uint256 weight
+    );
+
+    event ProposalExecuted(uint256 indexed id);
+
+    event ProposalCancelled(uint256 indexed id);
 
     /**
-    * @title DAO
-    * @notice Minimal DAO governance with snapshot-based voting.
-    */
+     * @param _token Address of token (must implement snapshot + balanceOfAt + totalSupplyAt)
+     * @param _quorumPercent Percent of total supply required for quorum (0-100)
+     */
+    constructor(address _token, uint8 _quorumPercent) {
+        if (_quorumPercent > 100) revert InvalidQuorum();
 
-    /// Minimal interface to interact with token snapshots
-    interface ITokenSnapshot {
-        function snapshot() external returns (uint256);
-        function balanceOf(address account) external view returns (uint256);
-        function balanceOfAt(address account, uint256 snapshotId) external view returns (uint256);
-        function totalSupplyAt(uint256 snapshotId) external view returns (uint256);
+        token = ITokenSnapshot(_token);
+        quorumPercent = _quorumPercent;
+
+        _grantRole(ADMIN_ROLE, msg.sender);
     }
 
-    contract DAO is AccessControl, ReentrancyGuard {
-        bytes32 public constant ADMIN_ROLE = DEFAULT_ADMIN_ROLE;
-        uint256 public constant MIN_VOTING_DURATION = 45 seconds; // Minimum 45 second voting period
-        uint256 public constant MIN_PROPOSAL_CREATION_POWER = 10e18; // Minimum 10 tokens required to create proposals
-        uint256 public constant EXECUTION_DELAY = 30 seconds; // Timelock: 30 seconds delay between voting end and execution start
-
-        ITokenSnapshot public immutable token;
-
-        uint256 public quorumPercent; // e.g., 30 for 30%
-
-        struct Proposal {
-            address target;
-            bytes data;
-            uint256 snapshotId;
-            uint256 deadline;
-            uint256 forVotes;
-            uint256 againstVotes;
-            bool executed;
-            address creator;
-            string cid; // IPFS CID of the target contract's source file; empty if not provided
+    /// @notice Create a proposal
+    /// @param target Target contract to call if executed
+    /// @param data Calldata to pass to `target`
+    /// @param deadline Voting deadline timestamp
+    /// @param cid IPFS CID emitted in event logs
+    function createProposal(
+        address target,
+        bytes calldata data,
+        uint256 deadline,
+        string calldata cid
+    ) external returns (uint256) {
+        if (deadline <= block.timestamp + MIN_VOTING_DURATION) {
+            revert VotingDurationTooShort();
         }
-
-        Proposal[] public proposals;
-
-        mapping(uint256 => mapping(address => bool)) public hasVoted;
-
-        event ProposalCreated(uint256 indexed id, address indexed creator, address target, uint256 snapshotId, uint256 deadline, string cid);
-        event VoteCast(uint256 indexed id, address indexed voter, bool support, uint256 weight);
-        event ProposalExecuted(uint256 indexed id);
-        event ProposalCancelled(uint256 indexed id);
-
-        /**
-        * @param _token Address of token (must implement snapshot + balanceOfAt + totalSupplyAt)
-        * @param _quorumPercent Percent of total supply required for quorum (0-100)
-        */
-        constructor(address _token, uint256 _quorumPercent) {
-            require(_quorumPercent <= 100, "Invalid quorum");
-            token = ITokenSnapshot(_token);
-            quorumPercent = _quorumPercent;
-            _grantRole(ADMIN_ROLE, msg.sender);
+        if (token.balanceOf(msg.sender) < MIN_PROPOSAL_CREATION_POWER) {
+            revert InsufficientBalance();
         }
-
-        /// @notice Create a proposal. Takes a snapshot and stores snapshotId.
-        /// @param target Target contract to call if executed
-        /// @param data Calldata to pass to `target` on execute
-        /// @param deadline Timestamp after which voting closes (must be at least MIN_VOTING_DURATION away)
-        /// @param cid IPFS CID of the target contract's source file; pass empty string if not applicable
-        function createProposal(address target, bytes calldata data, uint256 deadline, string calldata cid) external returns (uint256) {
-            require(deadline > block.timestamp + MIN_VOTING_DURATION, "Voting duration too short");
-            // Check minimum token balance to prevent spam
-            require(token.balanceOf(msg.sender) >= MIN_PROPOSAL_CREATION_POWER, "Insufficient balance to create proposal");
-            uint256 snapshotId = token.snapshot();
-            Proposal memory p = Proposal({
-                target: target,
-                data: data,
-                snapshotId: snapshotId,
-                deadline: deadline,
-                forVotes: 0,
-                againstVotes: 0,
-                executed: false,
-                creator: msg.sender,
-                cid: cid
-            });
-            proposals.push(p);
-            uint256 id = proposals.length - 1;
-            emit ProposalCreated(id, msg.sender, target, snapshotId, deadline, cid);
-            return id;
-        }
-
-        /// @notice Cast a vote for a proposal. Weight is token balance at proposal snapshot.
-        function vote(uint256 proposalId, bool support) external {
-            require(proposalId < proposals.length, "Proposal not found");
-            Proposal storage p = proposals[proposalId];
-            require(!p.executed, "Already executed");
-            require(block.timestamp < p.deadline, "Voting closed");
-            require(!hasVoted[proposalId][msg.sender], "Already voted");
-            uint256 weight = token.balanceOfAt(msg.sender, p.snapshotId);
-            require(weight > 0, "No voting power");
-            hasVoted[proposalId][msg.sender] = true;
-            if (support) {
+        uint256 snapshotId = token.snapshot();
+        Proposal memory p = Proposal({
+            target: target,
+            creator: msg.sender,
+            data: data,
+            snapshotId: snapshotId,
+            deadline: deadline,
+            forVotes: 0,
+            againstVotes: 0,
+            executed: false
+        });
+        proposals.push(p);
+        uint256 id = proposals.length - 1;
+        emit ProposalCreated(
+            id,
+            msg.sender,
+            target,
+            snapshotId,
+            deadline,
+            cid
+        );
+        return id;
+    }
+    /// @notice Cast a vote for a proposal
+    function vote(uint256 proposalId, bool support) external {
+        if (proposalId >= proposals.length) revert ProposalNotFound();
+        Proposal storage p = proposals[proposalId];
+        if (p.executed) revert AlreadyExecuted();
+        if (block.timestamp >= p.deadline) revert VotingClosed();
+        if (hasVoted[proposalId][msg.sender]) revert AlreadyVoted();
+        uint256 weight = token.balanceOfAt(msg.sender, p.snapshotId);
+        if (weight == 0) revert NoVotingPower();
+        hasVoted[proposalId][msg.sender] = true;
+        if (support) {
+            unchecked {
                 p.forVotes += weight;
-            } else {
+            }
+        } else {
+            unchecked {
                 p.againstVotes += weight;
             }
-            emit VoteCast(proposalId, msg.sender, support, weight);
         }
-
-        /// @notice Execute a proposal if quorum and majority passed. Non-reentrant.
-        function executeProposal(uint256 proposalId) external nonReentrant {
-            require(proposalId < proposals.length, "Proposal not found");
-            Proposal storage p = proposals[proposalId];
-            require(!p.executed, "Already executed");
-            require(block.timestamp >= p.deadline + EXECUTION_DELAY, "Execution delay not passed");
-            uint256 total = token.totalSupplyAt(p.snapshotId);
-            require(total > 0, "Total supply zero");
-            uint256 quorumNeeded = (total * quorumPercent) / 100;
-            require(p.forVotes >= quorumNeeded, "Quorum not reached");
-            require(p.forVotes > p.againstVotes, "Not majority");
-
-            p.executed = true;
-            (bool success, ) = p.target.call(p.data);
-            require(success, "Execution failed");
-            emit ProposalExecuted(proposalId);
-        }
-
-        /// @notice Cancel a proposal. Only creator can cancel before any votes are cast.
-        function cancelProposal(uint256 proposalId) external {
-            require(proposalId < proposals.length, "Proposal not found");
-            Proposal storage p = proposals[proposalId];
-            require(msg.sender == p.creator, "Not creator");
-            require(p.forVotes == 0 && p.againstVotes == 0, "Votes already cast");
-            require(!p.executed, "Already executed");
-            // mark as executed to prevent later execution
-            p.executed = true;
-            emit ProposalCancelled(proposalId);
-        }
-
-        /// @notice Update quorum percent. ADMIN_ROLE only.
-        function setQuorumPercent(uint256 _q) external onlyRole(ADMIN_ROLE) {
-            require(_q <= 100, "Invalid quorum");
-            quorumPercent = _q;
-        }
+        emit VoteCast(proposalId, msg.sender, support, weight);
     }
+
+    /// @notice Execute proposal if quorum + majority passed
+    function executeProposal(uint256 proposalId)
+        external
+        nonReentrant
+    {
+        if (proposalId >= proposals.length) revert ProposalNotFound();
+        Proposal storage p = proposals[proposalId];
+        if (p.executed) revert AlreadyExecuted();
+        if (block.timestamp < p.deadline + EXECUTION_DELAY) {
+            revert ExecutionDelayNotPassed();
+        }
+        uint256 total = token.totalSupplyAt(p.snapshotId);
+        if (total == 0) revert TotalSupplyZero();
+        uint256 quorumNeeded = (total * quorumPercent) / 100;
+        uint256 forVotes = p.forVotes;
+        uint256 againstVotes = p.againstVotes;
+        if (forVotes < quorumNeeded) revert QuorumNotReached();
+        if (forVotes <= againstVotes) revert NotMajority();
+        p.executed = true;
+        (bool success, ) = p.target.call(p.data);
+        if (!success) revert ExecutionFailed();
+        emit ProposalExecuted(proposalId);
+    }
+    /// @notice Cancel proposal before votes are cast
+    function cancelProposal(uint256 proposalId) external {
+        if (proposalId >= proposals.length) revert ProposalNotFound();
+        Proposal storage p = proposals[proposalId];
+        if (msg.sender != p.creator) revert NotCreator();
+        if (p.forVotes != 0 || p.againstVotes != 0) {
+            revert VotesAlreadyCast();
+        }
+        if (p.executed) revert AlreadyExecuted();
+        p.executed = true;
+        emit ProposalCancelled(proposalId);
+    }
+    /// @notice Update quorum percentage
+    function setQuorumPercent(uint8 _q)
+        external
+        onlyRole(ADMIN_ROLE)
+    {
+        if (_q > 100) revert InvalidQuorum();
+        quorumPercent = _q;
+    }
+}
