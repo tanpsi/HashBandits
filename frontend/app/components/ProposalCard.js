@@ -125,9 +125,6 @@ export default function ProposalCard({ proposalId, proposal, onToast }) {
 
   const [sourceCode, setSourceCode] = useState(null);
   const [loadingSource, setLoadingSource] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isDenied, setIsDenied] = useState(false);
 
   const status = getProposalStatus(proposal);
 
@@ -207,43 +204,24 @@ export default function ProposalCard({ proposalId, proposal, onToast }) {
   const handleFetchSource = async () => {
     if (sourceCode) {
       setSourceCode(null); // toggle off
-      setIsVerified(false);
-      setIsVerifying(false);
-      setIsDenied(false);
       return;
     }
     setLoadingSource(true);
     try {
       const code = await fetchSourceFromPinata(proposal.cid);
-      setSourceCode(code);
+      let parsedCode = code;
+      if (typeof code === 'string') {
+        try {
+          parsedCode = JSON.parse(code);
+        } catch (e) {
+          // Keep as string if not valid JSON
+        }
+      }
+      setSourceCode(parsedCode);
     } catch (err) {
       onToast("Failed to fetch source code from IPFS", "error");
     } finally {
       setLoadingSource(false);
-    }
-  };
-
-  const handleVerifyClick = async () => {
-    setIsVerifying(true);
-    setIsDenied(false);
-    // Wait 10 seconds before performing the verification check
-    await new Promise((resolve) => setTimeout(resolve, 10000));
-    try {
-      // Fetch the reference contract from public/ (works on Vercel)
-      const res = await fetch("/contracts/MockTarget.sol");
-      if (!res.ok) throw new Error("Failed to fetch reference contract");
-      const localSource = await res.text();
-      // Compare trimmed versions to ignore trailing whitespace differences
-      if (sourceCode.trim() === localSource.trim()) {
-        setIsVerified(true);
-      } else {
-        setIsDenied(true);
-      }
-    } catch (err) {
-      console.error("Verification failed:", err);
-      setIsDenied(true);
-    } finally {
-      setIsVerifying(false);
     }
   };
 
@@ -307,32 +285,91 @@ export default function ProposalCard({ proposalId, proposal, onToast }) {
                 </button>
               </div>
               {sourceCode && (
-                <div style={{ marginTop: 12, width: "100%" }}>
-                  <div style={{ background: "var(--bg-input)", padding: 12, borderRadius: 8, overflowX: "auto", marginBottom: 12 }}>
-                    <pre style={{ margin: 0, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: "var(--text-accent)", whiteSpace: "pre-wrap" }}>
-                      {sourceCode}
-                    </pre>
-                  </div>
-                  <button
-                    className="btn btn-sm"
-                    style={{
-                      backgroundColor: isDenied ? "#ef4444" : isVerified ? "var(--success)" : "#10b981",
-                      color: "#fff",
-                      border: "none",
-                      width: "100%",
-                      opacity: isVerified || isVerifying || isDenied ? 0.8 : 1,
-                      cursor: isVerified || isVerifying || isDenied ? "default" : "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center"
-                    }}
-                    onClick={handleVerifyClick}
-                    disabled={isVerified || isVerifying || isDenied}
-                  >
-                    {isVerifying ? (
-                      <><span className="spinner" style={{ width: 14, height: 14, marginRight: 6, borderWidth: 2 }} /> Verifying...</>
-                    ) : isVerified ? "✓ Verified" : isDenied ? "✗ Verification Denied" : "Verify Source Code"}
-                  </button>
+                <div style={{ marginTop: 16, width: "100%", animation: "fadeIn 0.3s ease-out", marginBottom: 8 }}>
+                  {typeof sourceCode === 'object' ? (
+                    <div style={{ 
+                      background: "rgba(255, 255, 255, 0.02)", 
+                      border: "1px solid rgba(255, 255, 255, 0.05)",
+                      borderRadius: "12px", 
+                      overflow: "hidden" 
+                    }}>
+                      <div style={{ 
+                        padding: "16px", 
+                        borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+                        display: "grid", 
+                        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", 
+                        gap: "16px" 
+                      }}>
+                        {sourceCode.contractName && (
+                          <div>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.5px" }}>Contract Name</div>
+                            <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{sourceCode.contractName}</div>
+                          </div>
+                        )}
+                        {sourceCode.contractAddress && (
+                          <div>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.5px" }}>Address</div>
+                            <div className="mono" style={{ fontSize: 13, color: "var(--text)", wordBreak: "break-all" }}>{sourceCode.contractAddress}</div>
+                          </div>
+                        )}
+                        {sourceCode.compilerVersion && (
+                          <div>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.5px" }}>Compiler</div>
+                            <div style={{ display: "inline-block", background: "rgba(99, 102, 241, 0.15)", color: "#818cf8", padding: "2px 8px", borderRadius: "12px", fontSize: 12, fontWeight: 500 }}>
+                              {sourceCode.compilerVersion}
+                            </div>
+                          </div>
+                        )}
+                        {sourceCode.evmVersion && (
+                          <div>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.5px" }}>EVM Version</div>
+                            <div style={{ display: "inline-block", background: "rgba(255, 255, 255, 0.1)", color: "var(--text-accent)", padding: "2px 8px", borderRadius: "12px", fontSize: 12 }}>
+                              {sourceCode.evmVersion}
+                            </div>
+                          </div>
+                        )}
+                        {sourceCode.optimizationUsed !== undefined && (
+                          <div>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.5px" }}>Optimization</div>
+                            <div style={{ 
+                              display: "inline-block", 
+                              background: sourceCode.optimizationUsed ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)", 
+                              color: sourceCode.optimizationUsed ? "#34d399" : "#f87171", 
+                              padding: "2px 8px", 
+                              borderRadius: "12px", 
+                              fontSize: 12,
+                              fontWeight: 500
+                            }}>
+                              {sourceCode.optimizationUsed ? "Yes" : "No"}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {sourceCode.sourceCode && (
+                        <div style={{ padding: "16px", background: "rgba(0, 0, 0, 0.3)" }}>
+                          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>Source Code</div>
+                          <div style={{ overflowX: "auto" }}>
+                            <pre style={{ 
+                              margin: 0, 
+                              fontSize: 12, 
+                              fontFamily: "'JetBrains Mono', monospace", 
+                              color: "var(--text-accent)", 
+                              whiteSpace: "pre-wrap" 
+                            }}>
+                              {sourceCode.sourceCode}
+                            </pre>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ background: "rgba(0,0,0,0.3)", padding: 16, borderRadius: 12, overflowX: "auto", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <pre style={{ margin: 0, fontSize: 12, fontFamily: "'JetBrains Mono', monospace", color: "var(--text-accent)", whiteSpace: "pre-wrap" }}>
+                        {sourceCode}
+                      </pre>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

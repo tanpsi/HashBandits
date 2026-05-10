@@ -16,7 +16,7 @@ export async function uploadSourceToPinata(sourceCode) {
   });
 
   try {
-    const file = new File([sourceCode], "source.txt", { type: "text/plain" });
+    const file = new File([sourceCode], "source.json", { type: "application/json" });
     const upload = await pinata.upload.public.file(file);
     return upload.cid || upload.ipfsHash || "0";
   } catch (error) {
