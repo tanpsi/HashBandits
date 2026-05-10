@@ -101,6 +101,7 @@ contract DAO is AccessControl, ReentrancyGuard {
     /// @param data Calldata to pass to `target`
     /// @param deadline Voting deadline timestamp
     /// @param cid IPFS CID emitted in event logs
+    /// @return ID of the newly created proposal
     function createProposal(
         address target,
         bytes calldata data,

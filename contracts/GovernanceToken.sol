@@ -24,6 +24,7 @@ contract GovernanceToken is ERC20Snapshot, AccessControl {
 
 error NotSnapshotRole();
     /// @notice Create a snapshot. Callable only by addresses with SNAPSHOT_ROLE.
+    /// @return The id of the created snapshot.
     function snapshot() external returns (uint256) {
         if (!hasRole(SNAPSHOT_ROLE, msg.sender)) revert NotSnapshotRole();
         return _snapshot();
