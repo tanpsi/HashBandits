@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
  * @title GovernanceToken
  * @notice ERC20 token with snapshot capability. Snapshot role controlled via AccessControl.
  */
+
 contract GovernanceToken is ERC20Snapshot, AccessControl {
     bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
 
@@ -21,9 +22,10 @@ contract GovernanceToken is ERC20Snapshot, AccessControl {
         _mint(msg.sender, initialSupply);
     }
 
+error NotSnapshotRole();
     /// @notice Create a snapshot. Callable only by addresses with SNAPSHOT_ROLE.
     function snapshot() external returns (uint256) {
-        require(hasRole(SNAPSHOT_ROLE, msg.sender), "GovernanceToken: not snapshot role");
+        if (!hasRole(SNAPSHOT_ROLE, msg.sender)) revert NotSnapshotRole();
         return _snapshot();
     }
 

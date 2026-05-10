@@ -48,6 +48,7 @@ contract DAO is AccessControl, ReentrancyGuard {
     struct Proposal {
         address target;
         address creator;
+        bool executed;
 
         bytes data;
 
@@ -56,8 +57,6 @@ contract DAO is AccessControl, ReentrancyGuard {
 
         uint256 forVotes;
         uint256 againstVotes;
-
-        bool executed;
     }
 
     Proposal[] public proposals;
