@@ -1,203 +1,516 @@
-# Project 3 – DAO Governance Contract
+# Project 3 – HashBandits DAO Governance System
 
-## Project Description
-This project implements a complete DAO governance system with snapshot-based voting, proposal creation/execution, and access control. It demonstrates core DeFi concepts including governance tokens, on-chain voting, and contract-to-contract calls.
+## Overview
 
-## Team Members
-- **Team Member 1**: Rudra - 240041031
-- **Team Member 2**: Tanish Yadav - 240041036
-- **Team Member 3**: Khush Kumar Singh - 240041023
-- **Team Member 4**: Aditya Rai - 240041002
-- **Team Member 5**: Sarath Chandra KVL - 240001039
-- **Team Member 6**: Rohan Chauhan - 240001061
+HashBandits is a complete on-chain DAO governance system built on the Ethereum Virtual Machine (EVM). The project demonstrates decentralized governance using ERC-20 governance tokens, snapshot-based voting, timelock-controlled proposal execution, and role-based access control.
 
-*Note: Replace placeholders with actual team member names and roll numbers.*
+The system enables token holders to:
 
-## Setup Instructions
+- Create governance proposals targeting arbitrary external contract calls
+- Vote using balances frozen at proposal snapshot time
+- Execute successful proposals after a mandatory timelock delay
+- Cancel proposals before voting begins
 
-### Prerequisites
+The project also includes a minimal frontend integrated with MetaMask for wallet interaction and governance access.
+
+---
+
+# Team Members
+
+- **Rudra** — 240041031
+- **Tanish Yadav** — 240041036
+- **Khush Kumar Singh** — 240041023
+- **Aditya Rai** — 240041002
+- **Sarath Chandra KVL** — 240001039
+- **Rohan Chauhan** — 240001061
+
+---
+
+# Tech Stack
+
+- Solidity `^0.8.19`
+- Hardhat
+- OpenZeppelin Contracts
+- Next.js
+- MetaMask
+
+---
+
+# Project Architecture
+
+The system consists of:
+
+## Smart Contracts
+
+### `GovernanceToken.sol`
+
+ERC-20 governance token with snapshot capability using `ERC20Snapshot`.
+
+Features:
+- Historical balance tracking
+- Snapshot-based voting
+- Role-controlled snapshot creation
+
+---
+
+### `DAO.sol`
+
+Core governance contract responsible for:
+
+- Proposal creation
+- Snapshot handling
+- Weighted voting
+- Proposal execution
+- Quorum validation
+- Timelock enforcement
+- Proposal cancellation
+
+Security modules:
+- `AccessControl`
+- `ReentrancyGuard`
+
+---
+
+### `MockTarget.sol`
+
+Auxiliary contract used for testing governance execution through contract-to-contract calls.
+
+---
+
+# Key Features
+
+## Snapshot-Based Governance
+
+Voting power is determined using balances at proposal creation time through token snapshots. This prevents vote manipulation through token transfers or flash-loan attacks.
+
+---
+
+## Timelock-Based Execution
+
+Approved proposals can only execute after a mandatory delay period, providing stakeholders time to react before governance changes take effect.
+
+---
+
+## Role-Based Access Control
+
+Administrative functions are protected using OpenZeppelin’s `AccessControl`.
+
+Roles include:
+- `ADMIN_ROLE`
+- `SNAPSHOT_ROLE`
+
+---
+
+## Immutable Proposal Source Verification using IPFS
+
+Each proposal optionally stores an IPFS CID referencing the source code associated with the proposal.
+
+This provides:
+- Decentralized source hosting
+- Immutable source verification
+- Transparency for voters
+- Independent audit capability
+
+---
+
+# Setup Instructions
+
+## Prerequisites
+
 - Node.js (v16 or higher)
 - npm (v8 or higher)
-- MetaMask browser extension (for frontend testing)
+- MetaMask browser extension
 
-### Installation
+---
+
+# Installation
+
 ```bash
 npm install
 ```
 
-### Compilation
+---
+
+# Compilation
+
 ```bash
 npx hardhat compile
 ```
 
-### Testing
+---
+
+# Testing
+
 ```bash
 npx hardhat test
 ```
 
-### Generate Gas Report
+---
+
+# Generate Gas Report
+
 ```bash
 REPORT_GAS=true npx hardhat test
 ```
 
-on Windows PowerShell:
+On Windows PowerShell:
+
 ```powershell
 $env:REPORT_GAS="true"; npx hardhat test
 ```
 
-### Generate Coverage Report
+---
+
+# Generate Coverage Report
+
 ```bash
 npx hardhat coverage
 ```
 
-### Deploy Contracts
+---
+
+# Deploy Contracts
+
 ```bash
 npx hardhat run scripts/deploy.js --network sepolia
 ```
 
 Optional: set initial governance token supply at deploy time (default: `1000`):
+
 ```bash
 INITIAL_SUPPLY=5000 npx hardhat run scripts/deploy.js --network sepolia
 ```
+
 or
+
 ```bash
 npx hardhat run scripts/deploy.js --network sepolia --initial-supply 5000
 ```
 
 Replace `sepolia` with your target network (e.g., `localhost`, `goerli`, `mainnet`).
 
-## Files of Interest
+---
 
-### Smart Contracts
-- **`contracts/GovernanceToken.sol`** — ERC20 token with snapshot capability for recording voter balances at proposal creation time.
-- **`contracts/DAO.sol`** — Core DAO governance contract with proposal creation, voting, execution, and cancellation.
-- **`contracts/MockTarget.sol`** — Simple contract used to demonstrate contract-to-contract calls during proposal execution.
+# Governance Workflow
 
-### Testing & Infrastructure
-- **`test/dao.test.js`** — Comprehensive test suite covering happy paths, edge cases, and failure scenarios.
-- **`scripts/deploy.js`** — Deployment script for local and testnet deployment.
-- **`frontend/index.html`** — MetaMask-integrated frontend for interacting with the DAO.
+## 1. Proposal Creation
 
-## Gas Optimization
+Token holders with sufficient voting power can create proposals specifying:
+- Target contract address
+- Encoded calldata
+- Voting deadline
+- Optional IPFS CID
 
-### Optimized Function: `executeProposal()`
+A token snapshot is automatically created during proposal creation.
 
-#### Before Optimization
-- **Average Gas Cost**: 88,938 gas
-- **Key Operations**: 
-  - Validation checks (deadline, quorum, majority)
-  - External contract call via low-level `.call()`
-  - State mutation and event emission
+---
 
-#### After Optimization
-- **Average Gas Cost**: 88,938 gas (already optimal for the use case)
+## 2. Voting
 
-#### Optimization Analysis
-The contract already achieves optimal gas efficiency through:
-1. **Snapshot-based Voting**: Avoids expensive token transfer tracking; uses fixed snapshot IDs for O(1) lookups.
-2. **Minimal State Mutations**: Only marks proposal as executed (single SSTORE operation).
-3. **ReentrancyGuard Efficiency**: Protected external call with minimal overhead (~400 gas).
-4. **No Unnecessary Loops**: All vote calculations are O(1) per voter.
+Users vote with weight proportional to their balance at the snapshot block.
 
-#### Recommendations
-- Enable Solidity optimizer in `hardhat.config.js` for potential 15-30% bytecode reduction.
-- Current implementation prioritizes clarity and security over marginal gas savings.
+Features:
+- Prevents double voting
+- Snapshot-based balance lookup
+- Supports both `for` and `against` voting
 
-See `reports/gas-optimization.md` for detailed analysis.
+---
 
-## Test Coverage
+## 3. Timelock Phase
 
-Current coverage metrics:
-```
-File                  |  % Stmts | % Branch |  % Funcs |  % Lines
-DAO.sol               |    97.3% |   52.27% |  83.33%  |  93.33%
-GovernanceToken.sol   |    100%  |    50%   |   100%   |   100%
-MockTarget.sol        |    100%  |    100%  |   100%   |   100%
-─────────────────────────────────────────────────────────────────
-All files             |   97.62% |   52.17% |    90%   |  94.12%
-```
+Successful proposals enter a mandatory timelock period before execution.
 
-All public functions are covered. Branch coverage is at 52% due to edge case paths in quorum/deadline validation.
+---
 
-## NatSpec Documentation
+## 4. Proposal Execution
 
-All public functions include comprehensive NatSpec comments:
-- `@notice` — Clear description of function purpose
-- `@param` — Parameter descriptions
-- `@return` — Return value descriptions
+After quorum and majority conditions are satisfied, proposals execute through low-level `.call()`.
 
-Example:
-```solidity
-/// @notice Execute a proposal if quorum and majority passed. Non-reentrant.
-function executeProposal(uint256 proposalId) external nonReentrant {
-    // Implementation...
+Execution is protected using `nonReentrant`.
+
+---
+
+# Security Features
+
+## Snapshot-Based Voting
+
+Balances are frozen at proposal creation time to eliminate governance manipulation through temporary token transfers.
+
+---
+
+## Reentrancy Protection
+
+`executeProposal()` uses OpenZeppelin’s `ReentrancyGuard`.
+
+---
+
+## Timelock Protection
+
+Execution delay provides reaction time before governance changes take effect.
+
+---
+
+## Proposal Creation Threshold
+
+A minimum token balance is required to reduce governance spam.
+
+---
+
+## Access Control
+
+Administrative functions and snapshot creation are role-restricted using OpenZeppelin `AccessControl`.
+
+---
+
+## Input Validation
+
+All major state-changing operations validate:
+- Deadlines
+- Proposal state
+- Voting eligibility
+- Quorum percentages
+- Execution conditions
+
+---
+
+# Gas Optimization
+
+The contracts underwent multiple optimization iterations and achieved approximately **48.1% total deployment gas reduction**.
+
+## Optimization Techniques
+
+### Custom Errors
+
+Replaced string-based `require()` statements with custom Solidity errors.
+
+Benefits:
+- Reduced bytecode size
+- Lower revert costs
+
+---
+
+### Struct Packing
+
+Reorganized struct variables to improve storage slot utilization.
+
+Benefits:
+- Fewer `SLOAD`
+- Fewer `SSTORE`
+- Lower runtime gas
+
+---
+
+### Reduced Storage Access
+
+Frequently accessed storage variables were cached in memory to reduce repeated reads.
+
+---
+
+### Solidity Optimizer
+
+Enabled Solidity optimizer with:
+
+```js
+optimizer: {
+  enabled: true,
+  runs: 200
 }
 ```
 
-## Key Features
+Benefits:
+- Reduced redundant opcodes
+- Improved control flow
+- Smaller deployment size
 
-### Smart Contract Functions
-1. **`createProposal(address target, bytes calldata data, uint256 deadline)`**
-   - Creates a new proposal and takes a token snapshot
-   - Only token holders can create proposals
-   
-2. **`vote(uint256 proposalId, bool support)`**
-   - Casts a vote with weight = token balance at snapshot
-   - Prevents double-voting per address
-   - Reverts if voter has no voting power
+---
 
-3. **`executeProposal(uint256 proposalId)`**
-   - Executes proposal if quorum (30% of total supply) and majority reached
-   - Calls external contract with encoded data
-   - Protected against reentrancy
+# Deployment Gas Comparison
 
-4. **`cancelProposal(uint256 proposalId)`**
-   - Creator can cancel before any votes cast
-   - Prevents abuse of proposal creation
+| Contract | Baseline Gas | Final Optimized Gas | Reduction |
+|---|---|---|---|
+| DAO | 2,948,544 | 1,459,393 | 50.5% |
+| GovernanceToken | 2,401,122 | 1,287,192 | 46.4% |
+| MockTarget | 119,705 | 91,649 | 23.4% |
+| **Total** | **5,469,371** | **2,838,234** | **48.1%** |
 
-### Security Measures
-- **AccessControl**: Admin-only functions protected by OpenZeppelin's AccessControl
-- **ReentrancyGuard**: Protects `executeProposal()` from reentrancy attacks
-- **Input Validation**: All inputs validated (deadlines, quorum percentages, addresses)
-- **Snapshot-based Voting**: Prevents flash-loan attacks by recording voter balances at proposal creation
+---
 
-## Frontend
+# Runtime Gas Costs
 
-The minimal frontend at `frontend/index.html` demonstrates:
+| Method | Average Gas | Optimization Impact |
+|---|---|---|
+| `createProposal()` | 241,186 | Optimized calldata and struct access |
+| `vote()` | 81,940 | Reduced storage operations |
+| `executeProposal()` | 87,366 | Optimized execution flow |
+| `setQuorumPercent()` | 28,963 | Minimal state mutation |
+
+---
+
+# Files of Interest
+
+## Smart Contracts
+
+### `contracts/DAO.sol`
+
+Core governance contract implementing the complete DAO workflow including proposal creation, voting, execution, cancellation, quorum validation, and timelock enforcement.  
+The contract uses snapshot-based voting to preserve historical voting power and integrates OpenZeppelin’s `AccessControl` and `ReentrancyGuard` for administrative security and protection against reentrancy attacks.  
+It stores proposals on-chain and executes approved governance actions through low-level external contract calls.
+
+---
+
+### `contracts/GovernanceToken.sol`
+
+ERC-20 governance token contract built using OpenZeppelin’s `ERC20Snapshot` extension.  
+The contract supports historical balance tracking through snapshots, allowing voting power to remain fixed throughout the proposal lifecycle even if token transfers occur later.  
+Snapshot creation is restricted through a dedicated `SNAPSHOT_ROLE`, ensuring only the DAO contract can create governance snapshots.
+
+---
+
+### `contracts/MockTarget.sol`
+
+Auxiliary testing contract used to validate DAO-controlled contract-to-contract interactions.  
+It contains a minimal writable state variable and a `setValue()` function that can be triggered through successful governance proposals.  
+The contract serves as a deterministic target during testing to verify that proposal execution correctly modifies external contract state.
+
+---
+
+## Testing & Infrastructure
+
+### `test/dao.test.js`
+
+Comprehensive Hardhat-based test suite covering all major governance workflows and security validations.  
+The tests verify proposal creation, weighted voting, quorum enforcement, timelock restrictions, execution success, proposal cancellation, access control protections, and failure conditions such as double voting or unauthorized actions.  
+The suite achieves 100% statement and function coverage across all smart contracts.
+
+---
+
+### `scripts/deploy.js`
+
+Deployment script responsible for automated deployment and initialization of all governance contracts.  
+The script deploys the governance token, DAO contract, and mock target contract, grants required snapshot permissions, stores deployed addresses, and optionally performs Etherscan verification on live networks.  
+It also supports configurable governance token supply during deployment to adapt to different organization sizes and tokenomics requirements.
+
+---
+
+### `frontend/index.html`
+
+Minimal frontend interface demonstrating browser-based interaction with the DAO system through MetaMask integration.  
+The frontend supports wallet connection and governance token balance display while serving as a foundation for future proposal creation and voting interfaces.  
+It provides a lightweight entry point for interacting with deployed smart contracts directly from the browser.
+
+---
+
+## Additional Project Components
+
+### `hardhat.config.js`
+
+Configuration file for the Hardhat development environment containing Solidity compiler settings, optimizer configuration, network definitions, gas reporting setup, and plugin integration.  
+The optimizer is configured with `runs: 200` to improve deployment and runtime gas efficiency in the production-ready optimized version.  
+The file also manages Sepolia deployment settings and testing infrastructure.
+
+---
+
+### `deployed-addresses.json`
+
+Automatically generated file storing deployed contract addresses after successful deployment execution.  
+It helps frontend applications and scripts dynamically reference deployed smart contracts without manually updating addresses after every redeployment.  
+This simplifies testing and integration across local and testnet environments.
+
+
+---
+
+# Test Coverage
+
+The test suite covers:
+
+- Proposal creation
+- Weighted voting
+- Double-vote prevention
+- Proposal execution
+- Proposal cancellation
+- Quorum validation
+- Timelock enforcement
+- Access control restrictions
+- Contract-to-contract execution
+
+Coverage results:
+
+| File | Statements | Branches | Functions | Lines |
+|---|---|---|---|---|
+| DAO.sol | 100% | 71.74% | 100% | 100% |
+| GovernanceToken.sol | 100% | 50.00% | 100% | 100% |
+| MockTarget.sol | 100% | 100% | 100% | 100% |
+| All Files | 100% | 70.83% | 100% | 100% |
+
+---
+
+# Frontend
+
+The frontend demonstrates:
 - MetaMask wallet connection
 - Token balance display
-- Ready for integration with proposal creation and voting UI
+- Browser-based DAO interaction
 
-### Usage
-1. Open `frontend/index.html` in a browser (requires MetaMask)
-2. Update token and DAO contract addresses in the HTML comments
-3. Connect MetaMask wallet
-4. View token balance
+Frontend entry point:
 
-## Known Issues & Limitations
-
-1. **Frontend Incomplete**: The current frontend is a minimal template. Full UI for proposal voting/execution should be implemented before production use.
-2. **No Gas Optimization Flag**: Solidity optimizer is disabled. Enable `optimizer: { enabled: true }` in `hardhat.config.js` for deployment to production networks.
-3. **Mock Target Only**: The `MockTarget` contract is for testing only. Real deployments should target actual governance actions.
-4. **Snapshot Management**: Be aware that proposals older than recent snapshots cannot record historical vote weights.
-
-## Running the Project
-
-### Local Development
-```bash
-npm install
-npx hardhat test
-npx hardhat coverage    # Generate coverage report
-REPORT_GAS=true npx hardhat test  # Generate gas report
+```text
+frontend/index.html
 ```
 
-### Deployment to Testnet
+---
+
+# Deployment Process
+
+The deployment script performs:
+
+1. Deploy `GovernanceToken`
+2. Deploy `DAO`
+3. Grant `SNAPSHOT_ROLE`
+4. Deploy `MockTarget`
+5. Store deployed addresses
+6. Attempt Etherscan verification on live networks
+
+Target testnet deployment:
+
 ```bash
-# Update network configuration in hardhat.config.js first
 npx hardhat run scripts/deploy.js --network sepolia
 ```
 
-## Additional Resources
-- [OpenZeppelin Contracts](https://docs.openzeppelin.com/contracts/)
-- [Hardhat Documentation](https://hardhat.org/)
-- [Solidity Docs](https://docs.soliditylang.org/)
+---
+
+# Project Structure
+
+```text
+contracts/
+├── DAO.sol
+├── GovernanceToken.sol
+└── MockTarget.sol
+
+scripts/
+└── deploy.js
+
+test/
+└── dao.test.js
+
+frontend/
+├── app/
+├── public/
+│   └── contracts/
+├── README.md
+├── jsconfig.json
+├── next.config.mjs
+├── package.json
+└── package-lock.json
+```
+
+
+
+---
+
+# References
+
+- OpenZeppelin Contracts — https://docs.openzeppelin.com/contracts/
+- Hardhat Documentation — https://hardhat.org/docs
+- Solidity Language Reference — https://docs.soliditylang.org/
+- ERC-20 Standard — https://eips.ethereum.org/EIPS/eip-20
+- ERC20Snapshot Documentation — https://docs.openzeppelin.com/contracts/
