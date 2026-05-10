@@ -2,7 +2,6 @@ node_modules/
 coverage/
 coverage.json
 coverage-report.txt
-reports/
 .env
 typechain/
 artifacts/

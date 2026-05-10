@@ -137,6 +137,8 @@ contract DAO is AccessControl, ReentrancyGuard {
         return id;
     }
     /// @notice Cast a vote for a proposal
+    /// @param proposalId ID of the proposal to vote on
+    /// @param support True for a yes-vote, false for a no-vote
     function vote(uint256 proposalId, bool support) external {
         if (proposalId >= proposals.length) revert ProposalNotFound();
         Proposal storage p = proposals[proposalId];
@@ -159,6 +161,7 @@ contract DAO is AccessControl, ReentrancyGuard {
     }
 
     /// @notice Execute proposal if quorum + majority passed
+    /// @param proposalId ID of the proposal to execute
     function executeProposal(uint256 proposalId)
         external
         nonReentrant
@@ -182,6 +185,7 @@ contract DAO is AccessControl, ReentrancyGuard {
         emit ProposalExecuted(proposalId);
     }
     /// @notice Cancel proposal before votes are cast
+    /// @param proposalId ID of the proposal to cancel
     function cancelProposal(uint256 proposalId) external {
         if (proposalId >= proposals.length) revert ProposalNotFound();
         Proposal storage p = proposals[proposalId];
@@ -194,6 +198,7 @@ contract DAO is AccessControl, ReentrancyGuard {
         emit ProposalCancelled(proposalId);
     }
     /// @notice Update quorum percentage
+    /// @param _q New quorum percentage (0-100)
     function setQuorumPercent(uint8 _q)
         external
         onlyRole(ADMIN_ROLE)

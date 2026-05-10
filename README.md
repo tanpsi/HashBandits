@@ -343,12 +343,12 @@ Benefits:
 
 # Runtime Gas Costs
 
-| Method | Average Gas | Optimization Impact |
-|---|---|---|
-| `createProposal()` | 241,186 | Optimized calldata and struct access |
-| `vote()` | 81,940 | Reduced storage operations |
-| `executeProposal()` | 87,366 | Optimized execution flow |
-| `setQuorumPercent()` | 28,963 | Minimal state mutation |
+| Method | Baseline Gas | Optimized Gas | Savings |
+|---|---|---|---|
+| `createProposal()` | 252,431 | 241,186 | -11,245 gas |
+| `vote()` | 86,210 | 81,940 | -4,270 gas |
+| `executeProposal()` | 88,938 | 87,366 | -1,572 gas |
+| `setQuorumPercent()` | 28,963 | 28,963 | - |
 
 ---
 
