@@ -493,8 +493,17 @@ test/
 └── dao.test.js
 
 frontend/
-└── index.html
+├── app/
+├── public/
+│   └── contracts/
+├── README.md
+├── jsconfig.json
+├── next.config.mjs
+├── package.json
+└── package-lock.json
 ```
+
+
 
 ---
 
