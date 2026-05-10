@@ -346,6 +346,86 @@ Benefits:
 
 ---
 
+# Files of Interest
+
+## Smart Contracts
+
+### `contracts/DAO.sol`
+
+Core governance contract implementing the complete DAO workflow including proposal creation, voting, execution, cancellation, quorum validation, and timelock enforcement.  
+The contract uses snapshot-based voting to preserve historical voting power and integrates OpenZeppelin’s `AccessControl` and `ReentrancyGuard` for administrative security and protection against reentrancy attacks.  
+It stores proposals on-chain and executes approved governance actions through low-level external contract calls.
+
+---
+
+### `contracts/GovernanceToken.sol`
+
+ERC-20 governance token contract built using OpenZeppelin’s `ERC20Snapshot` extension.  
+The contract supports historical balance tracking through snapshots, allowing voting power to remain fixed throughout the proposal lifecycle even if token transfers occur later.  
+Snapshot creation is restricted through a dedicated `SNAPSHOT_ROLE`, ensuring only the DAO contract can create governance snapshots.
+
+---
+
+### `contracts/MockTarget.sol`
+
+Auxiliary testing contract used to validate DAO-controlled contract-to-contract interactions.  
+It contains a minimal writable state variable and a `setValue()` function that can be triggered through successful governance proposals.  
+The contract serves as a deterministic target during testing to verify that proposal execution correctly modifies external contract state.
+
+---
+
+## Testing & Infrastructure
+
+### `test/dao.test.js`
+
+Comprehensive Hardhat-based test suite covering all major governance workflows and security validations.  
+The tests verify proposal creation, weighted voting, quorum enforcement, timelock restrictions, execution success, proposal cancellation, access control protections, and failure conditions such as double voting or unauthorized actions.  
+The suite achieves 100% statement and function coverage across all smart contracts.
+
+---
+
+### `scripts/deploy.js`
+
+Deployment script responsible for automated deployment and initialization of all governance contracts.  
+The script deploys the governance token, DAO contract, and mock target contract, grants required snapshot permissions, stores deployed addresses, and optionally performs Etherscan verification on live networks.  
+It also supports configurable governance token supply during deployment to adapt to different organization sizes and tokenomics requirements.
+
+---
+
+### `frontend/index.html`
+
+Minimal frontend interface demonstrating browser-based interaction with the DAO system through MetaMask integration.  
+The frontend supports wallet connection and governance token balance display while serving as a foundation for future proposal creation and voting interfaces.  
+It provides a lightweight entry point for interacting with deployed smart contracts directly from the browser.
+
+---
+
+## Additional Project Components
+
+### `hardhat.config.js`
+
+Configuration file for the Hardhat development environment containing Solidity compiler settings, optimizer configuration, network definitions, gas reporting setup, and plugin integration.  
+The optimizer is configured with `runs: 200` to improve deployment and runtime gas efficiency in the production-ready optimized version.  
+The file also manages Sepolia deployment settings and testing infrastructure.
+
+---
+
+### `deployed-addresses.json`
+
+Automatically generated file storing deployed contract addresses after successful deployment execution.  
+It helps frontend applications and scripts dynamically reference deployed smart contracts without manually updating addresses after every redeployment.  
+This simplifies testing and integration across local and testnet environments.
+
+---
+
+### `reports/`
+
+Contains detailed gas optimization reports, profiling outputs, and coverage analysis generated during development and optimization phases.  
+The reports document multiple optimization iterations including struct packing, custom errors, storage optimization, and Solidity optimizer integration.  
+These analyses demonstrate approximately 48.1% cumulative deployment gas reduction across the governance system.
+
+---
+
 # Test Coverage
 
 The test suite covers:
