@@ -2,7 +2,7 @@
 
 ## Overview
 
-HashBandits is a complete on-chain DAO governance system built on the Ethereum Virtual Machine (EVM). The project demonstrates decentralized governance using ERC-20 governance tokens, snapshot-based voting, timelock-controlled proposal execution, and role-based access control.
+HashBandits' DAO Governance is a complete on-chain DAO governance system built on the Ethereum Virtual Machine (EVM). The project demonstrates decentralized governance using ERC-20 governance tokens, snapshot-based voting, timelock-controlled proposal execution, and role-based access control.
 
 The system enables token holders to:
 
