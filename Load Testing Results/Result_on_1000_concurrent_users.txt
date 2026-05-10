@@ -1,0 +1,14 @@
+◇ injected env (0) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (0) from .env // tip: ⌘ override existing { override: true }
+Starting load test with 1000 accounts...
+Token deployed to: 0x5FbDB2315678afecb367f032d93F642f64180aa3
+DAO deployed to: 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+Distributing tokens to all accounts...
+Creating proposal...
+Proposal Created: ID 0
+Simulating 999 concurrent votes...
+
+--- Load Test Results ---
+Total Votes Cast: 999
+Time Taken: 1.38 seconds
+Throughput: 723.91 tx/sec

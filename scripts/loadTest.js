@@ -6,7 +6,8 @@ async function main() {
 
   // 1. Deploy Contracts
   const Token = await hre.ethers.getContractFactory("GovernanceToken");
-  const token = await Token.deploy("GovToken", "GOV", hre.ethers.parseEther("1000000"));
+  const initialSupply = process.env.INITIAL_SUPPLY || "1000000";
+  const token = await Token.deploy("GovToken", "GOV", hre.ethers.parseEther(initialSupply));
   await token.waitForDeployment();
   const tokenAddr = await token.getAddress();
   console.log(`Token deployed to: ${tokenAddr}`);
@@ -29,8 +30,8 @@ async function main() {
   console.log("Distributing tokens to all accounts...");
   const distributeTx = [];
   for (let i = 1; i < signers.length; i++) {
-    // Send 100 tokens to each
-    distributeTx.push(token.transfer(signers[i].address, hre.ethers.parseEther("100")));
+    // Send 10 tokens to each
+    distributeTx.push(token.transfer(signers[i].address, hre.ethers.parseEther("10")));
   }
   await Promise.all(distributeTx);
 
@@ -42,12 +43,14 @@ async function main() {
   const admin = signers[0];
   const target = mockAddr;
   const data = mock.interface.encodeFunctionData("setValue", [42]);
-  const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+  const latestBlock = await hre.ethers.provider.getBlock("latest");
+  // Hardhat adds ~1 second per block. We add 1 second per signer + a 1-hour buffer.
+  const deadline = latestBlock.timestamp + signers.length + 3600;
   const cid = "";
 
   const tx = await dao.connect(admin).createProposal(target, data, deadline, cid);
   const receipt = await tx.wait();
-  
+
   const event = receipt.logs.find(
     (log) => log.fragment && log.fragment.name === "ProposalCreated"
   );
@@ -57,14 +60,14 @@ async function main() {
   // 4. Load Test Voting
   console.log(`Simulating ${signers.length - 1} concurrent votes...`);
   const startTime = Date.now();
-  
+
   // Submit all vote transactions concurrently
   const votePromises = [];
   for (let i = 1; i < signers.length; i++) {
     const voter = signers[i];
     // We send transactions concurrently
     const votePromise = dao.connect(voter).vote(proposalId, true).catch(e => {
-        console.error(`Account ${i} vote failed:`, e.message);
+      console.error(`Account ${i} vote failed:`, e.message);
     });
     votePromises.push(votePromise);
   }
