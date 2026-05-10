@@ -59,6 +59,10 @@ Optional: set initial governance token supply at deploy time (default: `1000`):
 ```bash
 INITIAL_SUPPLY=5000 npx hardhat run scripts/deploy.js --network sepolia
 ```
+or
+```bash
+npx hardhat run scripts/deploy.js --network sepolia --initial-supply 5000
+```
 
 Replace `sepolia` with your target network (e.g., `localhost`, `goerli`, `mainnet`).
 
