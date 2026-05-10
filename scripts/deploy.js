@@ -1,16 +1,17 @@
 const fs = require("fs");
+const DEFAULT_INITIAL_SUPPLY = "1000";
 
 function getArgValue(argName) {
   const argPrefix = `--${argName}=`;
   const argv = process.argv.slice(2);
 
-  for (let argIndex = 0; argIndex < argv.length; argIndex++) {
-    const arg = argv[argIndex];
+  for (let index = 0; index < argv.length; index++) {
+    const arg = argv[index];
     if (arg.startsWith(argPrefix)) {
       return arg.slice(argPrefix.length);
     }
-    if (arg === `--${argName}` && argIndex + 1 < argv.length) {
-      return argv[argIndex + 1];
+    if (arg === `--${argName}` && index + 1 < argv.length) {
+      return argv[index + 1];
     }
   }
 
@@ -40,7 +41,8 @@ async function main() {
 
   const TOKEN_NAME = "GovToken";
   const TOKEN_SYMBOL = "GOV";
-  const initialSupplyInput = getArgValue("initial-supply") ?? process.env.INITIAL_SUPPLY ?? "1000";
+  const initialSupplyInput =
+    getArgValue("initial-supply") ?? process.env.INITIAL_SUPPLY ?? DEFAULT_INITIAL_SUPPLY;
   const TOKEN_SUPPLY = ethers.parseEther(initialSupplyInput);
   console.log(`Initial token supply: ${initialSupplyInput} ${TOKEN_SYMBOL}`);
   const QUORUM_PERCENT = 30;
